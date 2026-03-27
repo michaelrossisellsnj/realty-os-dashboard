@@ -374,6 +374,10 @@ const POSITIONS = {
     "war-room": {
       "cos-4":{x:490,y:610}, "rec-1":{x:440,y:650}, "rec-2":{x:540,y:650},
     },
+    "strategy-room": {
+      "cos-1":{x:1340,y:355}, "ls-2":{x:1390,y:340}, "ls-3":{x:1445,y:355},
+      "mk-4":{x:1460,y:420}, "op-2":{x:1445,y:490}, "rec-2":{x:1390,y:510}, "rec-5":{x:1335,y:490},
+    },
   },
   // Break room spots — agents fill these when idle
   breakRoom: [
@@ -851,6 +855,17 @@ function buildFloor() {
         </div>
       </div>
       <div style="position:absolute;bottom:10px;left:8px;right:8px;text-align:center;font-size:7px;color:rgba(96,165,250,.3);font-family:'IBM Plex Mono',monospace">22 AGENTS · qwen2.5:7b + claude-sonnet</div>
+    </div>
+    <!-- STRATEGY ROOM -->
+    <div class="room" style="left:1290px;top:282px;width:210px;height:280px;background:rgba(7,14,22,.97);border-color:#162538">
+      <div class="room-ambient" style="background:radial-gradient(ellipse at 50% 50%,rgba(96,165,250,.1),transparent 70%)"></div>
+      <div style="position:absolute;top:0;right:0;bottom:0;width:5px;background:linear-gradient(90deg,rgba(144,200,255,.15),rgba(144,200,255,.06))"></div>
+      <div class="room-label" style="color:rgba(96,165,250,.7);font-size:7px">⚡ STRATEGY ROOM</div>
+      <div class="room-badge" style="background:rgba(96,165,250,.15);color:#60A5FA;border:1px solid rgba(96,165,250,.35)">LIVE</div>
+      <div class="conf-table-furniture" style="left:55px;top:80px;width:100px;height:80px">
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'IBM Plex Mono',monospace;font-size:7px;color:rgba(255,255,255,.25);text-align:center;pointer-events:none">Efficiency<br>Summit</div>
+      </div>
+      <div style="position:absolute;bottom:10px;left:10px;right:10px;height:28px;background:#080a14;border:1px solid rgba(96,165,250,.15);border-radius:3px;display:flex;align-items:center;justify-content:center"><span style="font-size:8px;color:rgba(96,165,250,.5);font-family:'IBM Plex Mono',monospace">7 AGENTS · CROSS-TEAM SYNC</span></div>
     </div>
     <!-- FILES & STORAGE -->
     <div class="room" style="left:1290px;top:570px;width:210px;height:330px;background:rgba(9,11,15,.95);border-color:#181c24">
