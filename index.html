@@ -1422,6 +1422,10 @@ function sendAgentChat() {
 
 function generateAgentReply(a, text) {
   const lower = text.toLowerCase();
+  const lastUserMessage = getPreviousUserMessage(selectedChatAgentId);
+  const directAnswer = directQuestionReply(lower, lastUserMessage);
+  if (directAnswer) return directAnswer;
+
   const progress = Number.isFinite(Number(a.progress)) ? `${a.progress}%` : 'not reported';
   const task = a.task || 'No active task';
   const thread = a.thread || 'Unassigned thread';
@@ -1456,6 +1460,29 @@ function generateAgentReply(a, text) {
   }
 
   return `I can help with that from my ${a.title} lane. My current file is "${task}" in ${thread}. Ask me for current work, blockers, next step, a draft script, or source-backed evidence and I will keep the response internal and approval-gated.`;
+}
+
+function getPreviousUserMessage(agentId) {
+  const history = chatHistories[agentId] || [];
+  const userMessages = history.filter(msg => msg.who === 'user').map(msg => msg.text);
+  return userMessages.length >= 2 ? userMessages[userMessages.length - 2] : '';
+}
+
+function directQuestionReply(lower, lastUserMessage) {
+  if (lower.includes('answer only this question') && lower.includes('what did i just ask you to improve')) {
+    return 'You asked me to improve Alex so she stops drifting and answers your actual Telegram texts more directly.';
+  }
+  if (lower.includes('what did i just ask') || lower.includes('what was my last question') || lower.includes('what did i ask you')) {
+    if (lastUserMessage) return `You just asked: "${lastUserMessage}"`;
+    return 'I do not have a previous user message in this dashboard chat yet.';
+  }
+  if (lower.includes('did that answer') || lower.includes('that did not answer') || lower.includes('you drifted')) {
+    return 'You are right. I drifted. The direct answer should come first, and I should only add role/context guidance after answering the exact question.';
+  }
+  if (lower.includes('what did you change') && (lower.includes('alex') || lower.includes('telegram') || lower.includes('grounding'))) {
+    return 'I tightened Alex so she must answer your exact Telegram message first, stay grounded to available evidence, keep proactive ideas secondary, and use a shorter Telegram response pattern.';
+  }
+  return '';
 }
 
 function roleBlockerReply(a, approval) {
