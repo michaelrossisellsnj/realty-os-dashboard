@@ -268,6 +268,135 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:rgba(255,255,25
 .prog-bg{height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;margin-top:5px}
 .prog-fg{height:100%;border-radius:2px;transition:width 1s}
 
+/* AGENT CHAT */
+.chat-dock{
+  position:fixed;
+  right:16px;
+  bottom:42px;
+  width:min(390px,calc(100vw - 24px));
+  height:min(570px,calc(100vh - 116px));
+  background:rgba(12,14,24,.98);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:14px;
+  box-shadow:0 24px 80px rgba(0,0,0,.58);
+  display:none;
+  flex-direction:column;
+  overflow:hidden;
+  z-index:460;
+  backdrop-filter:blur(16px);
+}
+.chat-dock.open{display:flex}
+.chat-head{
+  padding:14px 14px 12px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  display:flex;
+  align-items:center;
+  gap:11px;
+  flex-shrink:0;
+}
+.chat-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;line-height:1.1}
+.chat-role{font-size:10px;color:rgba(255,255,255,.4);margin-top:3px}
+.chat-state{font-size:9px;font-family:'IBM Plex Mono',monospace;margin-top:5px}
+.chat-close{
+  margin-left:auto;
+  width:28px;
+  height:28px;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.04);
+  color:rgba(255,255,255,.55);
+  cursor:pointer;
+}
+.chat-context{
+  padding:10px 14px;
+  border-bottom:1px solid rgba(255,255,255,.06);
+  background:rgba(255,255,255,.025);
+  font-size:10px;
+  line-height:1.45;
+  color:rgba(255,255,255,.48);
+}
+.chat-context strong{color:rgba(255,255,255,.78);font-weight:600}
+.chat-messages{
+  flex:1;
+  overflow-y:auto;
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+}
+.chat-msg{
+  max-width:86%;
+  padding:9px 10px;
+  border-radius:12px;
+  font-size:11px;
+  line-height:1.48;
+  white-space:pre-wrap;
+}
+.chat-msg.agent{
+  align-self:flex-start;
+  background:rgba(255,255,255,.045);
+  border:1px solid rgba(255,255,255,.07);
+  color:rgba(255,255,255,.72);
+  border-top-left-radius:4px;
+}
+.chat-msg.user{
+  align-self:flex-end;
+  background:rgba(212,175,55,.14);
+  border:1px solid rgba(212,175,55,.28);
+  color:rgba(255,255,255,.86);
+  border-top-right-radius:4px;
+}
+.chat-chips{
+  padding:0 14px 10px;
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  border-top:1px solid rgba(255,255,255,.06);
+  padding-top:10px;
+}
+.chat-chip{
+  border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.035);
+  color:rgba(255,255,255,.56);
+  border-radius:999px;
+  padding:6px 8px;
+  font-size:9px;
+  cursor:pointer;
+  font-family:'IBM Plex Mono',monospace;
+}
+.chat-input-row{
+  display:flex;
+  gap:8px;
+  padding:10px 14px 14px;
+  border-top:1px solid rgba(255,255,255,.06);
+  flex-shrink:0;
+}
+.chat-input{
+  flex:1;
+  min-width:0;
+  border:1px solid rgba(255,255,255,.1);
+  background:rgba(0,0,0,.2);
+  color:rgba(255,255,255,.82);
+  border-radius:9px;
+  padding:9px 10px;
+  font-size:11px;
+  outline:none;
+}
+.chat-input:focus{border-color:rgba(212,175,55,.45)}
+.chat-send{
+  border:1px solid rgba(212,175,55,.38);
+  background:rgba(212,175,55,.16);
+  color:#f6d979;
+  border-radius:9px;
+  padding:0 12px;
+  font-size:10px;
+  font-family:'IBM Plex Mono',monospace;
+  cursor:pointer;
+}
+@media(max-width:700px){
+  .chat-dock{left:0;right:0;bottom:0;width:100%;height:74vh;border-radius:16px 16px 0 0}
+}
+
 /* MOBILE MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:flex-end}
 .modal-overlay.open{display:flex}
@@ -369,6 +498,31 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:rgba(255,255,25
 <!-- MOBILE MODAL -->
 <div class="modal-overlay" id="modal" onclick="closeModal(event)">
   <div class="modal-sheet"><div class="modal-handle"></div><div id="modal-content" style="padding:0 16px 16px"></div></div>
+</div>
+
+<!-- AGENT CHAT -->
+<div class="chat-dock" id="agent-chat" aria-live="polite">
+  <div class="chat-head">
+    <div id="chat-avatar"></div>
+    <div style="min-width:0">
+      <div class="chat-title" id="chat-name">Agent</div>
+      <div class="chat-role" id="chat-role">Role</div>
+      <div class="chat-state" id="chat-state">Internal chat only</div>
+    </div>
+    <button class="chat-close" type="button" onclick="closeAgentChat()" aria-label="Close agent chat">×</button>
+  </div>
+  <div class="chat-context" id="chat-context"></div>
+  <div class="chat-messages" id="chat-messages"></div>
+  <div class="chat-chips">
+    <button class="chat-chip" type="button" onclick="sendQuickChat('What are you working on?')">Current work</button>
+    <button class="chat-chip" type="button" onclick="sendQuickChat('What is blocking you?')">Blockers</button>
+    <button class="chat-chip" type="button" onclick="sendQuickChat('What should Michael do next?')">Next step</button>
+    <button class="chat-chip" type="button" onclick="sendQuickChat('Draft a client update script for approval.')">Draft script</button>
+  </div>
+  <div class="chat-input-row">
+    <input class="chat-input" id="chat-input" type="text" placeholder="Ask this agent..." onkeydown="handleChatKey(event)">
+    <button class="chat-send" type="button" onclick="sendAgentChat()">Send</button>
+  </div>
 </div>
 
 <script>
@@ -554,6 +708,8 @@ let currentTab = 'office';
 let refreshTimer = null;
 let motionTimer = null;
 let refreshCountdown = 30;
+let selectedChatAgentId = null;
+let chatHistories = {};
 
 function portraitHTML(a, size = 38) {
   if (a.photo) {
@@ -1156,51 +1312,187 @@ function updateBubble(id, a) {
 function handleAgentTap(id) {
   const allAvatars = document.querySelectorAll('.agent-avatar');
   const el = agentElements[id];
+  if (!el) return;
 
   // Deselect all others
   allAvatars.forEach(a => { if (a !== el) a.classList.remove('selected'); });
 
-  // Toggle this one
-  el.classList.toggle('selected');
-
-  // On mobile show modal too
-  if (window.innerWidth < 768) {
-    const a = agentData[id];
-    if (!a) return;
-    const isActive = a.status === 'active';
-    document.getElementById('modal-content').innerHTML = `
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.06)">
-        <div style="width:54px;height:54px;border-radius:14px;background:${a.color}14;border:1px solid ${a.color}40;display:flex;align-items:center;justify-content:center;flex-shrink:0">${portraitHTML(a, 44)}</div>
-        <div>
-          <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:${a.color}">${a.name}</div>
-          <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px">${a.title}</div>
-          <div style="font-size:10px;margin-top:4px;color:${isActive?'#34d399':'rgba(255,255,255,0.3)'}">${isActive?'● Active':'○ In Break Room'}</div>
-        </div>
-      </div>
-      ${isActive ? `
-      <div style="margin-bottom:12px">
-        <div style="font-size:8px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:.1em;font-family:'IBM Plex Mono',monospace;margin-bottom:6px">Current Task</div>
-        <div style="padding:10px;background:rgba(255,255,255,0.03);border-left:3px solid ${a.color};border-radius:8px">
-          <div style="font-size:11px;color:rgba(255,255,255,0.75);line-height:1.5;margin-bottom:6px">${a.task}</div>
-          <div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:3px"><span style="color:rgba(255,255,255,0.3)">Progress</span><span style="color:${a.color};font-family:'IBM Plex Mono',monospace">${a.progress}%</span></div>
-          <div style="height:3px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden"><div style="height:100%;width:${a.progress}%;background:${a.color};box-shadow:0 0 8px ${a.color}60;border-radius:2px"></div></div>
-          <div style="margin-top:6px;font-size:9px;color:rgba(255,255,255,0.3)">${a.thread}</div>
-        </div>
-      </div>` : `
-      <div style="padding:10px;background:rgba(255,255,255,0.02);border-radius:8px;text-align:center;color:rgba(255,255,255,0.4);font-size:11px">☕ Taking a break — no active task</div>`}
-      <div style="margin-top:12px">
-        <div style="font-size:8px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:.1em;font-family:'IBM Plex Mono',monospace;margin-bottom:6px">Active Skill</div>
-        <div style="padding:6px 10px;background:rgba(255,255,255,0.03);border-radius:6px;font-size:9px;color:rgba(255,255,255,0.3);font-family:'IBM Plex Mono',monospace">${a.skill}.md</div>
-      </div>
-    `;
-    document.getElementById('modal').classList.add('open');
-  }
+  el.classList.add('selected');
+  openAgentChat(id);
 }
 
 function closeModal(e) {
   if (e.target === document.getElementById('modal')) {
     document.getElementById('modal').classList.remove('open');
   }
+}
+
+function escapeHTML(value) {
+  return String(value || '').replace(/[&<>"']/g, ch => ({
+    '&':'&amp;',
+    '<':'&lt;',
+    '>':'&gt;',
+    '"':'&quot;',
+    "'":'&#39;'
+  }[ch]));
+}
+
+function loadChatHistories() {
+  try {
+    const raw = localStorage.getItem('realty-os-agent-chat-v1');
+    chatHistories = raw ? JSON.parse(raw) : {};
+  } catch(e) {
+    chatHistories = {};
+  }
+}
+
+function saveChatHistories() {
+  try {
+    localStorage.setItem('realty-os-agent-chat-v1', JSON.stringify(chatHistories));
+  } catch(e) {}
+}
+
+function openAgentChat(id) {
+  const a = agentData[id] || AGENT_META[id];
+  if (!a) return;
+  selectedChatAgentId = id;
+  const isActive = a.status === 'active' && a.location !== 'break';
+  const chat = document.getElementById('agent-chat');
+  document.getElementById('chat-avatar').innerHTML = portraitHTML(a, 46);
+  document.getElementById('chat-name').textContent = a.name;
+  document.getElementById('chat-name').style.color = a.color;
+  document.getElementById('chat-role').textContent = a.title;
+  document.getElementById('chat-state').textContent = `${isActive ? 'Active' : 'In break room'} · Internal chat only`;
+  document.getElementById('chat-state').style.color = isActive ? '#34d399' : 'rgba(255,255,255,.35)';
+  document.getElementById('chat-context').innerHTML = `<strong>Current focus:</strong> ${escapeHTML(a.task || 'No active task')}<br><strong>Approval gate:</strong> no outbound messages, pricing, CMA conclusions, CRM edits, or client instructions are sent from this panel.`;
+
+  if (!chatHistories[id] || !chatHistories[id].length) {
+    chatHistories[id] = [{
+      who:'agent',
+      text:`Hi Michael. I'm ${a.name}, your ${a.title}. I can brief you on my current work, explain what I need, draft internal/client-facing language for approval, and suggest next moves. I will not send anything or make pricing/client commitments from this chat.`
+    }];
+    saveChatHistories();
+  }
+  chat.classList.add('open');
+  renderAgentChat();
+  setTimeout(() => document.getElementById('chat-input').focus(), 40);
+}
+
+function closeAgentChat() {
+  document.getElementById('agent-chat').classList.remove('open');
+  selectedChatAgentId = null;
+}
+
+function renderAgentChat() {
+  const box = document.getElementById('chat-messages');
+  const history = chatHistories[selectedChatAgentId] || [];
+  box.innerHTML = history.map(msg =>
+    `<div class="chat-msg ${msg.who === 'user' ? 'user' : 'agent'}">${escapeHTML(msg.text)}</div>`
+  ).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+function addChatMessage(agentId, who, text) {
+  if (!chatHistories[agentId]) chatHistories[agentId] = [];
+  chatHistories[agentId].push({who, text});
+  chatHistories[agentId] = chatHistories[agentId].slice(-36);
+  saveChatHistories();
+}
+
+function handleChatKey(e) {
+  if (e.key === 'Enter') sendAgentChat();
+}
+
+function sendQuickChat(text) {
+  document.getElementById('chat-input').value = text;
+  sendAgentChat();
+}
+
+function sendAgentChat() {
+  if (!selectedChatAgentId) return;
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const a = agentData[selectedChatAgentId] || AGENT_META[selectedChatAgentId];
+  addChatMessage(selectedChatAgentId, 'user', text);
+  input.value = '';
+  addChatMessage(selectedChatAgentId, 'agent', generateAgentReply(a, text));
+  renderAgentChat();
+}
+
+function generateAgentReply(a, text) {
+  const lower = text.toLowerCase();
+  const progress = Number.isFinite(Number(a.progress)) ? `${a.progress}%` : 'not reported';
+  const task = a.task || 'No active task';
+  const thread = a.thread || 'Unassigned thread';
+  const approval = "I can draft or recommend it here, but I will keep it approval-gated. Nothing gets sent, posted, priced, or changed in CRM until Michael approves.";
+
+  if (/(send|email|text|dm|call|post|publish|invite|calendar|crm|change status|update command|approve|approval)/.test(lower)) {
+    return `${approval}\n\nBest next safe move: I will prepare the suggested action, the reason, and any risk notes so you can approve, edit, or skip it.`;
+  }
+
+  if (/(price|pricing|value|valuation|cma|net proceeds|list price|seller report)/.test(lower)) {
+    return `For value, pricing, or CMA work, I need source-backed evidence first: subject facts, GSMLS sold/active/pending comps, RPR/NARRPR support when available, market direction, and absorption. ${approval}`;
+  }
+
+  if (/(working|doing|task|status|focus)/.test(lower)) {
+    return `Right now my focus is: ${task}\n\nThread: ${thread}\nProgress: ${progress}\n\nMy practical goal is to turn this into a clean approve/edit/skip item for you, especially anything that can create listing appointments.`;
+  }
+
+  if (/(block|blocked|stuck|need|missing)/.test(lower)) {
+    return roleBlockerReply(a, approval);
+  }
+
+  if (/(next|recommend|should i|priority|roi|appointments|listing appointment)/.test(lower)) {
+    return roleNextStepReply(a);
+  }
+
+  if (/(draft|script|video|voice|client update|intro|explain)/.test(lower)) {
+    return `Draft for approval:\n\n"Hi, this is ${a.name} from Michael Rossi's digital support team. I am helping Michael organize the next step on your file so his team can move quickly and accurately. Michael will personally approve any recommendations before anything final is sent."\n\nI would tailor this to the client, property, and stage before it leaves the system.`;
+  }
+
+  if (/(source|proof|verify|evidence|gsmls|rpr|narrpr|zillow|realtor|homes)/.test(lower)) {
+    return `I would treat GSMLS and RPR/NARRPR as the primary evidence path, then use Zillow, Realtor.com, Homes.com, or public/off-market references only as support when the primary sources are incomplete. I will label every fact by source and confidence before anything becomes client-facing.`;
+  }
+
+  return `I can help with that from my ${a.title} lane. My current file is "${task}" in ${thread}. Ask me for current work, blockers, next step, a draft script, or source-backed evidence and I will keep the response internal and approval-gated.`;
+}
+
+function roleBlockerReply(a, approval) {
+  const role = `${a.name} ${a.title}`.toLowerCase();
+  if (role.includes('sophia') || role.includes('listing')) {
+    return `My likely blockers are missing source-backed property facts, insufficient verified comps, unclear seller motivation, or an unapproved pricing narrative. ${approval}`;
+  }
+  if (role.includes('daniel') || role.includes('market research')) {
+    return `My blockers are evidence quality: I need reliable sold/active/pending data, property condition context, and clear reasons each comp is included or excluded.`;
+  }
+  if (role.includes('thomas') || role.includes('compliance')) {
+    return `My blockers are compliance checks: DNC/TCPA posture, disclosure requirements, source attribution, and making sure no outreach or valuation claim creates risk.`;
+  }
+  if (role.includes('rachel') || role.includes('client experience')) {
+    return `My blockers are relationship context and tone: who already knows Michael, what they last needed, and whether the next touch should be warm, service-based, or appointment-focused.`;
+  }
+  if (role.includes('alex') || role.includes('chief')) {
+    return `My blocker is usually decision clarity. I need the team to present clean approve/edit/skip options with evidence, expected ROI, and risk notes so your time is protected.`;
+  }
+  return `My blockers are usually missing context, missing source evidence, or an action that needs your approval before it can move forward. ${approval}`;
+}
+
+function roleNextStepReply(a) {
+  const role = `${a.name} ${a.title}`.toLowerCase();
+  if (role.includes('sales') || role.includes('lead') || role.includes('appointment')) {
+    return `Recommended next step: prioritize the hottest seller-intent records, convert each into one approved outreach draft, and track whether it moves toward a listing appointment. The weekly target stays three qualified listing appointments minimum.`;
+  }
+  if (role.includes('marketing') || role.includes('content') || role.includes('social') || role.includes('email')) {
+    return `Recommended next step: turn verified proof points into appointment-generating assets: seller pain posts, market shift updates, expired/FSBO education, and past-client referral prompts. I will draft, but publishing stays approval-gated.`;
+  }
+  if (role.includes('listing') || role.includes('market research')) {
+    return `Recommended next step: produce the strongest seller-prep packet for the next 1-2 opportunities: property facts, seller motivation, likely value range only after evidence, competition, absorption, and appointment angle.`;
+  }
+  if (role.includes('compliance')) {
+    return `Recommended next step: review any proposed seller outreach for DNC/TCPA, fair housing, source attribution, and valuation language before Michael sees the approve/edit/skip version.`;
+  }
+  return `Recommended next step: convert my current task into one decision-ready item for Michael with evidence, expected ROI, and the smallest possible approval request.`;
 }
 
 // ═══════════════════════════════════════════
@@ -1324,6 +1616,7 @@ setInterval(updateClock, 1000);
 // ═══════════════════════════════════════════
 async function init() {
   document.getElementById('loading-status').textContent = 'Loading agent data...';
+  loadChatHistories();
   await fetchData();
   document.getElementById('loading-status').textContent = 'Building your office...';
   buildFloor();
