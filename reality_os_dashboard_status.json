@@ -3,25 +3,25 @@
     {
       "action": "Dashboard sync exported 23 Realty OS jobs with 0 warnings",
       "agent": "op-2",
-      "time": "10:40 AM",
+      "time": "10:50 AM",
       "type": "systems"
     },
     {
       "action": "Weekly listing appointment pace: 0/3 appointments, 0/1-2 listings",
       "agent": "cos-0",
-      "time": "10:40 AM",
+      "time": "10:50 AM",
       "type": "brief"
     },
     {
       "action": "Seller pipeline: 2 evidence record(s), 1 source-review triage item(s)",
       "agent": "cos-1",
-      "time": "10:40 AM",
+      "time": "10:50 AM",
       "type": "lead"
     },
     {
       "action": "Next leverage point remains GSMLS/RPR/property verification for direct seller signals",
       "agent": "bs-3",
-      "time": "10:40 AM",
+      "time": "10:50 AM",
       "type": "cma"
     }
   ],
@@ -188,7 +188,7 @@
       "thread": ""
     }
   },
-  "generated_at": "2026-05-09T10:40:02-04:00",
+  "generated_at": "2026-05-09T10:50:05-04:00",
   "metrics": {
     "appointments_this_week": 0,
     "listings_this_week": 0,
