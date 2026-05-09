@@ -1,0 +1,201 @@
+{
+  "activity": [
+    {
+      "action": "Dashboard sync exported 23 Realty OS jobs with 0 warnings",
+      "agent": "op-2",
+      "time": "8:10 AM",
+      "type": "systems"
+    },
+    {
+      "action": "Weekly listing appointment pace: 0/3 appointments, 0/1-2 listings",
+      "agent": "cos-0",
+      "time": "8:10 AM",
+      "type": "brief"
+    },
+    {
+      "action": "Seller pipeline: 2 evidence record(s), 1 source-review triage item(s)",
+      "agent": "cos-1",
+      "time": "8:10 AM",
+      "type": "lead"
+    },
+    {
+      "action": "Next leverage point remains GSMLS/RPR/property verification for direct seller signals",
+      "agent": "bs-3",
+      "time": "8:10 AM",
+      "type": "cma"
+    }
+  ],
+  "agents": {
+    "bs-1": {
+      "location": "break",
+      "progress": 0,
+      "status": "idle",
+      "task": "No active task",
+      "thread": ""
+    },
+    "bs-2": {
+      "location": "desk",
+      "progress": 35,
+      "status": "active",
+      "task": "Source-reviewing inbound form signal before it can count as seller pipeline",
+      "thread": "Amara triage assist"
+    },
+    "bs-3": {
+      "location": "desk",
+      "progress": 43,
+      "status": "active",
+      "task": "Clearing GSMLS/RPR/property-source verification for direct seller signals",
+      "thread": "Daniel verification desk"
+    },
+    "cos-0": {
+      "location": "desk",
+      "progress": 74,
+      "status": "active",
+      "task": "Watching 23 Realty OS automations and routing blockers toward 3 listing appointments/week",
+      "thread": "Alex accountability desk"
+    },
+    "cos-1": {
+      "location": "desk",
+      "progress": 58,
+      "status": "active",
+      "task": "Protecting seller pipeline quality: 1 triage item(s), 2 evidence record(s)",
+      "thread": "Victoria listing pipeline"
+    },
+    "cos-2": {
+      "location": "meeting:marketing-studio",
+      "progress": 40,
+      "status": "active",
+      "task": "Converting seller blockers into campaign angles only after source confidence improves",
+      "thread": "Marcus ROI desk"
+    },
+    "cos-3": {
+      "location": "meeting:conf-b",
+      "progress": 46,
+      "status": "active",
+      "task": "Protecting Michael's time from admin drag and transaction distractions",
+      "thread": "Diana time leverage desk"
+    },
+    "cos-4": {
+      "location": "break",
+      "progress": 0,
+      "status": "idle",
+      "task": "No active task",
+      "thread": ""
+    },
+    "dc-1": {
+      "location": "meeting:conf-b",
+      "progress": 64,
+      "status": "active",
+      "task": "Maintaining DNC/TCPA and value-language approval boundaries",
+      "thread": "Thomas compliance desk"
+    },
+    "ls-1": {
+      "location": "desk",
+      "progress": 50,
+      "status": "active",
+      "task": "Preparing seller appointment packet checklist while value/pricing stays approval-gated",
+      "thread": "Sophia seller prep"
+    },
+    "ls-2": {
+      "location": "desk",
+      "progress": 18,
+      "status": "active",
+      "task": "Listing coordination waiting on 1 untouched evidence record(s)",
+      "thread": "James listing coordination"
+    },
+    "ls-3": {
+      "location": "break",
+      "progress": 0,
+      "status": "idle",
+      "task": "No active task",
+      "thread": ""
+    },
+    "mk-1": {
+      "location": "meeting:marketing-studio",
+      "progress": 25,
+      "status": "active",
+      "task": "Preparing social prompts around listing opportunities without publishing",
+      "thread": "Olivia social desk"
+    },
+    "mk-2": {
+      "location": "meeting:marketing-studio",
+      "progress": 28,
+      "status": "active",
+      "task": "Holding email nurture drafts until Alex has a verified approve/edit/skip item",
+      "thread": "Nathan approval-gated nurture"
+    },
+    "mk-3": {
+      "location": "meeting:marketing-studio",
+      "progress": 32,
+      "status": "active",
+      "task": "Preparing homeowner education hooks from verified seller pain points",
+      "thread": "Priya content desk"
+    },
+    "mk-4": {
+      "location": "desk",
+      "progress": 24,
+      "status": "active",
+      "task": "Watching source ROI before recommending paid seller campaigns",
+      "thread": "Leo source ROI desk"
+    },
+    "op-1": {
+      "location": "break",
+      "progress": 0,
+      "status": "idle",
+      "task": "No active task",
+      "thread": ""
+    },
+    "op-2": {
+      "location": "desk",
+      "progress": 82,
+      "status": "active",
+      "task": "Dashboard sync online; KPI tracker reads 0/3 appointments and 0/1-2 listings",
+      "thread": "Andre systems desk"
+    },
+    "op-3": {
+      "location": "desk",
+      "progress": 52,
+      "status": "active",
+      "task": "Looking for warm relationship paths before Michael is asked to approve outreach",
+      "thread": "Rachel relationship desk"
+    },
+    "rec-1": {
+      "location": "break",
+      "progress": 0,
+      "status": "idle",
+      "task": "No active task",
+      "thread": ""
+    },
+    "rec-2": {
+      "location": "break",
+      "progress": 0,
+      "status": "idle",
+      "task": "No active task",
+      "thread": ""
+    },
+    "rec-3": {
+      "location": "break",
+      "progress": 0,
+      "status": "idle",
+      "task": "No active task",
+      "thread": ""
+    },
+    "rec-5": {
+      "location": "break",
+      "progress": 0,
+      "status": "idle",
+      "task": "No active task",
+      "thread": ""
+    }
+  },
+  "generated_at": "2026-05-09T08:10:48-04:00",
+  "metrics": {
+    "appointments_this_week": 0,
+    "listings_this_week": 0,
+    "realty_jobs": 23,
+    "seller_evidence_records": 2,
+    "seller_triage_open": 1,
+    "warnings": 0
+  },
+  "source": "local Realty OS workspace"
+}

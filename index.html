@@ -102,7 +102,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:rgba(255,255,25
 .agent-avatar:hover .agent-task-bubble{display:flex}
 .agent-avatar.selected .agent-task-bubble{display:flex}
 
-/* Emoji circle */
+/* Professional human-style avatar portrait */
 .agent-emoji-wrap{
   position:relative;
   width:32px;height:32px;
@@ -117,6 +117,45 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:rgba(255,255,25
   opacity:0.5;
   filter:grayscale(0.4);
 }
+.agent-portrait{
+  position:relative;
+  width:38px;height:38px;
+  border-radius:50%;
+  border:2px solid;
+  overflow:hidden;
+  background:linear-gradient(180deg,#23283a,#10131f);
+  box-shadow:0 5px 14px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.18);
+  transition:all .3s;
+}
+.agent-photo{
+  width:42px;height:42px;
+  border-radius:50%;
+  border:2px solid;
+  object-fit:cover;
+  object-position:center;
+  display:block;
+  background:#151826;
+  box-shadow:0 6px 16px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.2);
+  filter:saturate(.95) contrast(1.04);
+}
+.agent-photo.idle{opacity:.5;filter:grayscale(.4) saturate(.75)}
+.agent-portrait.idle{opacity:.48;filter:grayscale(.35)}
+.portrait-neck{position:absolute;left:15px;top:25px;width:9px;height:9px;background:var(--skin);border-radius:0 0 5px 5px;z-index:2}
+.portrait-suit{position:absolute;left:7px;right:7px;bottom:-1px;height:14px;background:linear-gradient(135deg,var(--suit),#080a12);border-radius:10px 10px 0 0;z-index:3}
+.portrait-shirt{position:absolute;left:16px;bottom:1px;width:7px;height:11px;background:#eef2f7;clip-path:polygon(50% 0,100% 100%,0 100%);z-index:4;opacity:.9}
+.portrait-face{position:absolute;left:10px;top:8px;width:18px;height:21px;background:var(--skin);border-radius:48% 48% 46% 46%;z-index:5;box-shadow:inset -3px -2px 0 rgba(0,0,0,.07)}
+.portrait-hair{position:absolute;left:8px;top:5px;width:22px;height:14px;background:var(--hair);border-radius:12px 12px 8px 8px;z-index:6}
+.portrait-hair.short{height:9px;border-radius:12px 12px 5px 5px}
+.portrait-hair.long{left:7px;top:5px;width:24px;height:22px;border-radius:13px 13px 9px 9px}
+.portrait-hair.bob{left:7px;top:5px;width:24px;height:18px;border-radius:13px 13px 7px 7px}
+.portrait-hair.bald{display:none}
+.portrait-eye{position:absolute;top:16px;width:2px;height:2px;border-radius:50%;background:#171717;z-index:7}
+.portrait-eye.left{left:15px}.portrait-eye.right{right:15px}
+.portrait-mouth{position:absolute;left:17px;top:23px;width:5px;height:2px;border-radius:0 0 6px 6px;border-bottom:1px solid rgba(80,30,30,.45);z-index:7}
+.portrait-accent{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--accent);z-index:8;opacity:.9}
+.portrait-glasses::before,.portrait-glasses::after{content:'';position:absolute;top:15px;width:6px;height:4px;border:1px solid rgba(20,20,20,.7);border-radius:4px;z-index:8}
+.portrait-glasses::before{left:11px}.portrait-glasses::after{right:11px}
+.portrait-glasses span{position:absolute;left:17px;top:17px;width:4px;height:1px;background:rgba(20,20,20,.55);z-index:8}
 
 /* Pulse ring for active agents */
 .agent-pulse{
@@ -340,7 +379,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:rgba(255,255,25
 const CONFIG = {
   SHEET_ID: "1sJUtl5jSJrIhuhYy19tVapmIQscpQV44r0gFZ-7-nYc",
   STATUS_TAB: "Sheet1",
-  REFRESH_INTERVAL: 30000,
+  LOCAL_STATUS_URL: "reality_os_dashboard_status.json",
+  REFRESH_INTERVAL: 10000,
   LIVE_MODE: true,
 };
 
@@ -425,29 +465,29 @@ const CONF_ASSIGNMENT = {
 // AGENT META — static info
 // ═══════════════════════════════════════════
 const AGENT_META = {
-  "cos-0":{name:"Alex",title:"Chief of Staff / CEO Bot",avatar:"🤖",color:"#D4AF37",skill:"SKILL_RE_MORNING_BRIEFING"},
-  "cos-1":{name:"Victoria",title:"Sales Operations",avatar:"👩‍💼",color:"#E8634A",skill:"SKILL_RE_KWCOMMAND_LEAD_STATUS_UPDATE"},
-  "cos-2":{name:"Marcus",title:"Marketing & Growth",avatar:"👨‍💼",color:"#6DC86D",skill:"SKILL_RE_SOCIAL_SCHEDULING"},
-  "cos-3":{name:"Diana",title:"Operations & Compliance",avatar:"👩‍⚖️",color:"#A78BFA",skill:"SKILL_RE_TRANSACTION_DEADLINE_TRACKING"},
-  "cos-4":{name:"Jordan",title:"Recruiting Division",avatar:"🤝",color:"#60A5FA",skill:"SKILL_RECRUITING_DAILY_CALL_LIST"},
-  "ls-1":{name:"Sophia",title:"Listing Specialist",avatar:"🏠",color:"#E8634A",skill:"SKILL_RE_GSMLS_COMP_SEARCH"},
-  "ls-2":{name:"James",title:"Listing Coordinator",avatar:"📋",color:"#E8634A",skill:"SKILL_RE_KWCOMMAND_LISTING_INPUT"},
-  "ls-3":{name:"Elena",title:"Staging Advisor",avatar:"🎨",color:"#E8634A",skill:"SKILL_RE_STAGING_PRESENTATION"},
-  "bs-1":{name:"Ryan",title:"Buyer's Agent Specialist",avatar:"🔑",color:"#60A5FA",skill:"SKILL_RE_BUYER_OFFER_ANALYSIS"},
-  "bs-2":{name:"Amara",title:"Buyer Lead Qualifier",avatar:"📞",color:"#60A5FA",skill:"SKILL_RE_LEAD_QUALIFICATION_SCORING"},
-  "bs-3":{name:"Daniel",title:"Market Research Analyst",avatar:"📊",color:"#60A5FA",skill:"SKILL_RE_GSMLS_COMP_SEARCH"},
-  "mk-1":{name:"Olivia",title:"Social Media Manager",avatar:"📱",color:"#6DC86D",skill:"SKILL_RE_SOCIAL_POST_CREATION"},
-  "mk-2":{name:"Nathan",title:"Email Campaign Manager",avatar:"✉️",color:"#6DC86D",skill:"SKILL_RE_MONTHLY_MARKET_NEWSLETTER"},
-  "mk-3":{name:"Priya",title:"Content & SEO",avatar:"✍️",color:"#6DC86D",skill:"SKILL_RE_BLOG_SEO_CONTENT"},
-  "mk-4":{name:"Leo",title:"Paid Ads Specialist",avatar:"🎯",color:"#6DC86D",skill:"SKILL_RE_SOCIAL_ADS_MANAGEMENT"},
-  "op-1":{name:"Catherine",title:"Transaction Coordinator",avatar:"📑",color:"#A78BFA",skill:"SKILL_RE_KWCOMMAND_TRANSACTION_FILE"},
-  "op-2":{name:"Andre",title:"CRM & Systems Admin",avatar:"⚙️",color:"#A78BFA",skill:"SKILL_RE_KWCOMMAND_LEAD_INTAKE"},
-  "op-3":{name:"Rachel",title:"Client Experience Manager",avatar:"⭐",color:"#A78BFA",skill:"SKILL_RE_POST_CLOSING_REVIEW_REQUEST"},
-  "dc-1":{name:"Thomas",title:"Compliance Specialist",avatar:"📝",color:"#A78BFA",skill:"SKILL_RE_NJ_DISCLOSURE_FORM_MGMT"},
-  "rec-1":{name:"Riley",title:"PSI List Specialist",avatar:"📋",color:"#60A5FA",skill:"SKILL_RECRUITING_PSI_LIST_PROCESSING"},
-  "rec-2":{name:"Casey",title:"KScore Analyst",avatar:"📊",color:"#60A5FA",skill:"SKILL_RECRUITING_CRM_PROSPECT_ENTRY"},
-  "rec-3":{name:"Avery",title:"Outreach Coordinator",avatar:"🎬",color:"#60A5FA",skill:"SKILL_RECRUITING_VIDEO_DROP_TRIGGER"},
-  "rec-5":{name:"Morgan",title:"Appointment Setter",avatar:"📅",color:"#60A5FA",skill:"SKILL_RECRUITING_APPOINTMENT_BOOKING"},
+  "cos-0":{name:"Alex",title:"Chief of Staff",avatar:"A",color:"#D4AF37",skill:"SKILL_RE_MORNING_BRIEFING",photo:"assets/avatars/alex.jpg",look:{skin:"#d0a078",hair:"#2b1713",hairStyle:"bob",suit:"#151826",glasses:false}},
+  "cos-1":{name:"Victoria",title:"Sales Operations",avatar:"V",color:"#E8634A",skill:"SKILL_RE_KWCOMMAND_LEAD_STATUS_UPDATE",photo:"assets/avatars/victoria.jpg",look:{skin:"#b97855",hair:"#2b1713",hairStyle:"bob",suit:"#2a1110"}},
+  "cos-2":{name:"Marcus",title:"Marketing & Growth",avatar:"M",color:"#6DC86D",skill:"SKILL_RE_SOCIAL_SCHEDULING",photo:"assets/avatars/marcus.jpg",look:{skin:"#8f5b3c",hair:"#171717",hairStyle:"short",suit:"#102013",glasses:true}},
+  "cos-3":{name:"Diana",title:"Operations & Compliance",avatar:"D",color:"#A78BFA",skill:"SKILL_RE_TRANSACTION_DEADLINE_TRACKING",photo:"assets/avatars/diana.jpg",look:{skin:"#d0a078",hair:"#3b2a1f",hairStyle:"long",suit:"#201633"}},
+  "cos-4":{name:"Jordan",title:"Recruiting Division",avatar:"J",color:"#60A5FA",skill:"SKILL_RECRUITING_DAILY_CALL_LIST",photo:"assets/avatars/jordan.jpg",look:{skin:"#a66f4e",hair:"#24201b",hairStyle:"short",suit:"#102033"}},
+  "ls-1":{name:"Sophia",title:"Listing Specialist",avatar:"S",color:"#E8634A",skill:"SKILL_RE_GSMLS_COMP_SEARCH",photo:"assets/avatars/sophia.jpg",look:{skin:"#c98762",hair:"#20100d",hairStyle:"long",suit:"#331614"}},
+  "ls-2":{name:"James",title:"Listing Coordinator",avatar:"J",color:"#E8634A",skill:"SKILL_RE_KWCOMMAND_LISTING_INPUT",photo:"assets/avatars/james.jpg",look:{skin:"#d1a17d",hair:"#4a3327",hairStyle:"short",suit:"#2b1718"}},
+  "ls-3":{name:"Elena",title:"Staging Advisor",avatar:"E",color:"#E8634A",skill:"SKILL_RE_STAGING_PRESENTATION",photo:"assets/avatars/elena.jpg",look:{skin:"#b8795b",hair:"#2b1510",hairStyle:"bob",suit:"#2a1616"}},
+  "bs-1":{name:"Ryan",title:"Buyer's Agent Specialist",avatar:"R",color:"#60A5FA",skill:"SKILL_RE_BUYER_OFFER_ANALYSIS",photo:"assets/avatars/ryan.jpg",look:{skin:"#c9926b",hair:"#261812",hairStyle:"short",suit:"#102238"}},
+  "bs-2":{name:"Amara",title:"Buyer Lead Qualifier",avatar:"A",color:"#60A5FA",skill:"SKILL_RE_LEAD_QUALIFICATION_SCORING",photo:"assets/avatars/amara.jpg",look:{skin:"#7e4d35",hair:"#161111",hairStyle:"long",suit:"#102238"}},
+  "bs-3":{name:"Daniel",title:"Market Research Analyst",avatar:"D",color:"#60A5FA",skill:"SKILL_RE_GSMLS_COMP_SEARCH",photo:"assets/avatars/daniel.jpg",look:{skin:"#d7ad83",hair:"#5c4737",hairStyle:"short",suit:"#102238",glasses:true}},
+  "mk-1":{name:"Olivia",title:"Social Media Manager",avatar:"O",color:"#6DC86D",skill:"SKILL_RE_SOCIAL_POST_CREATION",photo:"assets/avatars/olivia.jpg",look:{skin:"#c98f68",hair:"#1c120f",hairStyle:"bob",suit:"#102418"}},
+  "mk-2":{name:"Nathan",title:"Email Campaign Manager",avatar:"N",color:"#6DC86D",skill:"SKILL_RE_MONTHLY_MARKET_NEWSLETTER",photo:"assets/avatars/nathan.jpg",look:{skin:"#b77b55",hair:"#2a1d18",hairStyle:"short",suit:"#102418"}},
+  "mk-3":{name:"Priya",title:"Content & SEO",avatar:"P",color:"#6DC86D",skill:"SKILL_RE_BLOG_SEO_CONTENT",photo:"assets/avatars/priya.jpg",look:{skin:"#9d6245",hair:"#151010",hairStyle:"long",suit:"#102418",glasses:true}},
+  "mk-4":{name:"Leo",title:"Paid Ads Specialist",avatar:"L",color:"#6DC86D",skill:"SKILL_RE_SOCIAL_ADS_MANAGEMENT",photo:"assets/avatars/leo.jpg",look:{skin:"#d0a47f",hair:"#6c5746",hairStyle:"short",suit:"#102418"}},
+  "op-1":{name:"Catherine",title:"Transaction Coordinator",avatar:"C",color:"#A78BFA",skill:"SKILL_RE_KWCOMMAND_TRANSACTION_FILE",photo:"assets/avatars/catherine.jpg",look:{skin:"#c9906c",hair:"#3a241b",hairStyle:"bob",suit:"#211633"}},
+  "op-2":{name:"Andre",title:"CRM & Systems Admin",avatar:"A",color:"#A78BFA",skill:"SKILL_RE_KWCOMMAND_LEAD_INTAKE",photo:"assets/avatars/andre.jpg",look:{skin:"#8b573c",hair:"#141010",hairStyle:"short",suit:"#211633",glasses:true}},
+  "op-3":{name:"Rachel",title:"Client Experience Manager",avatar:"R",color:"#A78BFA",skill:"SKILL_RE_POST_CLOSING_REVIEW_REQUEST",photo:"assets/avatars/rachel.jpg",look:{skin:"#d7aa84",hair:"#5a3d2e",hairStyle:"long",suit:"#211633"}},
+  "dc-1":{name:"Thomas",title:"Compliance Specialist",avatar:"T",color:"#A78BFA",skill:"SKILL_RE_NJ_DISCLOSURE_FORM_MGMT",photo:"assets/avatars/thomas.jpg",look:{skin:"#bb8564",hair:"#2a211d",hairStyle:"short",suit:"#211633",glasses:true}},
+  "rec-1":{name:"Riley",title:"PSI List Specialist",avatar:"R",color:"#60A5FA",skill:"SKILL_RECRUITING_PSI_LIST_PROCESSING",photo:"assets/avatars/riley.jpg",look:{skin:"#c68c65",hair:"#211713",hairStyle:"short",suit:"#102238"}},
+  "rec-2":{name:"Casey",title:"KScore Analyst",avatar:"C",color:"#60A5FA",skill:"SKILL_RECRUITING_CRM_PROSPECT_ENTRY",photo:"assets/avatars/casey.jpg",look:{skin:"#d1a17d",hair:"#3d3127",hairStyle:"bob",suit:"#102238",glasses:true}},
+  "rec-3":{name:"Avery",title:"Outreach Coordinator",avatar:"A",color:"#60A5FA",skill:"SKILL_RECRUITING_VIDEO_DROP_TRIGGER",photo:"assets/avatars/avery.jpg",look:{skin:"#b87551",hair:"#1a1110",hairStyle:"long",suit:"#102238"}},
+  "rec-5":{name:"Morgan",title:"Appointment Setter",avatar:"M",color:"#60A5FA",skill:"SKILL_RECRUITING_APPOINTMENT_BOOKING",photo:"assets/avatars/morgan.jpg",look:{skin:"#a66f4e",hair:"#181110",hairStyle:"short",suit:"#102238"}},
 };
 
 // ═══════════════════════════════════════════
@@ -499,8 +539,9 @@ const ACTIVITY_LOG = [
 const TYPE_COLORS = {
   brief:"#D4AF37",recruiting:"#60A5FA",transaction:"#A78BFA",
   lead:"#34d399",cma:"#E8634A",offer:"#60A5FA",
-  marketing:"#6DC86D",compliance:"#f87171",client:"#34d399"
+  marketing:"#6DC86D",compliance:"#f87171",client:"#34d399",systems:"#A78BFA"
 };
+let activityLog = [...ACTIVITY_LOG];
 
 // ═══════════════════════════════════════════
 // STATE
@@ -511,7 +552,38 @@ let currentPositions = {};    // current x,y of each agent
 let breakRoomOccupied = {};   // which break room spots are taken
 let currentTab = 'office';
 let refreshTimer = null;
+let motionTimer = null;
 let refreshCountdown = 30;
+
+function portraitHTML(a, size = 38) {
+  if (a.photo) {
+    return `<img class="agent-photo" src="${a.photo}" alt="${a.name}" style="width:${size}px;height:${size}px;border-color:${a.color}" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML=this.dataset.fallback" data-fallback='${fallbackPortraitHTML(a, size).replace(/'/g, "&apos;")}'>`;
+  }
+  return fallbackPortraitHTML(a, size);
+}
+
+function fallbackPortraitHTML(a, size = 38) {
+  const look = a.look || {};
+  const skin = look.skin || '#c98f68';
+  const hair = look.hair || '#211713';
+  const suit = look.suit || '#151826';
+  const hairStyle = look.hairStyle || 'short';
+  const glasses = look.glasses ? ' portrait-glasses' : '';
+  const scale = (size / 38).toFixed(3);
+  return `<div style="width:${size}px;height:${size}px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">
+  <div class="agent-portrait ${glasses}" style="transform:scale(${scale});border-color:${a.color};--skin:${skin};--hair:${hair};--suit:${suit};--accent:${a.color}">
+    ${look.glasses ? '<span></span>' : ''}
+    <div class="portrait-hair ${hairStyle}"></div>
+    <div class="portrait-neck"></div>
+    <div class="portrait-suit"></div>
+    <div class="portrait-shirt"></div>
+    <div class="portrait-face"></div>
+    <div class="portrait-eye left"></div>
+    <div class="portrait-eye right"></div>
+    <div class="portrait-mouth"></div>
+    <div class="portrait-accent"></div>
+  </div></div>`;
+}
 
 // ═══════════════════════════════════════════
 // DATA FETCHING
@@ -520,6 +592,22 @@ async function fetchData() {
   if (!CONFIG.LIVE_MODE) {
     mergeData(DEMO_STATUS);
     return;
+  }
+  try {
+    const localRes = await fetch(`${CONFIG.LOCAL_STATUS_URL}?t=${Date.now()}`, {cache:'no-store'});
+    if (localRes.ok) {
+      const local = await localRes.json();
+      if (local && local.agents) {
+        mergeData(local.agents);
+        if (Array.isArray(local.activity)) activityLog = [...local.activity, ...ACTIVITY_LOG].slice(0, 30);
+        const label = local.metrics ? `LIVE · ${local.metrics.realty_jobs || 0} JOBS` : 'LIVE LOCAL';
+        document.getElementById('live-label').textContent = label;
+        return;
+      }
+    }
+    throw new Error('Local status unavailable');
+  } catch(localError) {
+    // Fall through to Google Sheet, then demo mode.
   }
   try {
     const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(CONFIG.STATUS_TAB)}&t=${Date.now()}`;
@@ -543,7 +631,7 @@ async function fetchData() {
       }
     });
     mergeData(map);
-    document.getElementById('live-label').textContent = 'LIVE';
+    document.getElementById('live-label').textContent = 'LIVE · SHEET';
   } catch(e) {
     mergeData(DEMO_STATUS);
     document.getElementById('live-label').textContent = 'DEMO';
@@ -597,7 +685,12 @@ function resolvePosition(id) {
   }
 
   // Default: home desk
-  return POSITIONS.desk[id] || {x:100,y:100};
+  const base = POSITIONS.desk[id] || {x:100,y:100};
+  if (a.status === 'active') {
+    const phase = (Date.now() / 1400) + id.split('').reduce((sum,ch)=>sum+ch.charCodeAt(0),0);
+    return {x:base.x + Math.sin(phase) * 7, y:base.y + Math.cos(phase * .85) * 5};
+  }
+  return base;
 }
 
 // Assign break room spots to idle agents
@@ -708,12 +801,12 @@ function buildFloor() {
       <div class="room-ambient" style="background:radial-gradient(ellipse at 50% 50%,rgba(96,165,250,.08),transparent 70%)"></div>
       <div style="position:absolute;top:0;left:30px;right:30px;height:5px;background:linear-gradient(90deg,rgba(144,200,255,.12),rgba(144,200,255,.06))"></div>
       <div style="position:absolute;top:0;right:0;width:5px;top:20px;bottom:20px;background:linear-gradient(90deg,rgba(144,200,255,.12),rgba(144,200,255,.06))"></div>
-      <div class="room-label" style="color:rgba(96,165,250,.6)">CONF A — OFFER STRATEGY</div>
+      <div class="room-label" style="color:rgba(96,165,250,.6)">CONF A — SELLER STRATEGY</div>
       <div class="room-badge" style="background:rgba(96,165,250,.12);color:#60A5FA;border:1px solid rgba(96,165,250,.25)">LIVE</div>
       <div class="conf-table-furniture" style="left:95px;top:90px;width:110px;height:70px">
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'IBM Plex Mono',monospace;font-size:7px;color:rgba(255,255,255,.2);text-align:center;pointer-events:none">2 Norman Lane<br>Roxbury</div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'IBM Plex Mono',monospace;font-size:7px;color:rgba(255,255,255,.2);text-align:center;pointer-events:none">Seller Pipeline<br>Strategy</div>
       </div>
-      <div style="position:absolute;bottom:8px;left:10px;right:10px;height:24px;background:#080a14;border:1px solid #1e2138;border-radius:2px;display:flex;align-items:center;justify-content:center"><span style="font-size:7px;color:rgba(96,165,250,.5);font-family:'IBM Plex Mono',monospace">GSMLS · $485K · 22 DOM</span></div>
+      <div style="position:absolute;bottom:8px;left:10px;right:10px;height:24px;background:#080a14;border:1px solid #1e2138;border-radius:2px;display:flex;align-items:center;justify-content:center"><span style="font-size:7px;color:rgba(96,165,250,.5);font-family:'IBM Plex Mono',monospace">3 APPTS/WEEK · APPROVAL GATED</span></div>
     </div>
     <!-- LISTING TEAM -->
     <div class="room" style="left:1294px;top:0;width:206px;height:282px;background:rgba(8,16,18,.95);border-color:#1a2830">
@@ -731,12 +824,12 @@ function buildFloor() {
     <!-- CONF B — Transactions -->
     <div class="room" style="left:88px;top:296px;width:280px;height:260px;background:rgba(12,8,20,.95);border-color:#281a38">
       <div class="room-ambient" style="background:radial-gradient(ellipse at 50% 50%,rgba(167,139,250,.08),transparent 70%)"></div>
-      <div class="room-label" style="color:rgba(167,139,250,.6);font-size:7px">CONF B — TRANSACTION COORDINATION</div>
+      <div class="room-label" style="color:rgba(167,139,250,.6);font-size:7px">CONF B — VERIFICATION & COMPLIANCE</div>
       <div class="room-badge" style="background:rgba(167,139,250,.12);color:#A78BFA;border:1px solid rgba(167,139,250,.25)">LIVE</div>
       <div class="conf-table-furniture" style="left:80px;top:90px;width:120px;height:70px">
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'IBM Plex Mono',monospace;font-size:7px;color:rgba(255,255,255,.2);text-align:center;pointer-events:none">13 Spruce Terrace<br>+ Hynson</div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'IBM Plex Mono',monospace;font-size:7px;color:rgba(255,255,255,.2);text-align:center;pointer-events:none">Evidence<br>Review</div>
       </div>
-      <div style="position:absolute;bottom:8px;left:10px;right:10px;height:30px;background:#080a14;border:1px solid rgba(167,139,250,.15);border-radius:3px;padding:5px 8px"><div style="font-size:7px;color:rgba(167,139,250,.5);font-family:'IBM Plex Mono',monospace;margin-bottom:1px">NEXT DEADLINE</div><div style="font-size:8px;color:#FBBF24;font-weight:600">⚠ Hynson Mortgage — May 1</div></div>
+      <div style="position:absolute;bottom:8px;left:10px;right:10px;height:30px;background:#080a14;border:1px solid rgba(167,139,250,.15);border-radius:3px;padding:5px 8px"><div style="font-size:7px;color:rgba(167,139,250,.5);font-family:'IBM Plex Mono',monospace;margin-bottom:1px">ACTIVE GATE</div><div style="font-size:8px;color:#FBBF24;font-weight:600">Approval before outreach/value language</div></div>
     </div>
     <!-- BUYER TEAM -->
     <div class="room" style="left:368px;top:296px;width:460px;height:260px;background:rgba(8,14,18,.95);border-color:#1a2530">
@@ -880,7 +973,7 @@ function buildFloor() {
           <div style="height:8px;background:#A78BFA50;border-radius:1px;animation:pulse 1.8s infinite 1.3s"></div>
         </div>
       </div>
-      <div style="position:absolute;bottom:10px;left:8px;right:8px;text-align:center;font-size:7px;color:rgba(96,165,250,.3);font-family:'IBM Plex Mono',monospace">22 AGENTS · qwen2.5:7b + claude-sonnet</div>
+      <div style="position:absolute;bottom:10px;left:8px;right:8px;text-align:center;font-size:7px;color:rgba(96,165,250,.3);font-family:'IBM Plex Mono',monospace">23 AGENTS · LOCAL SYNC · HERMES ONLINE</div>
     </div>
     <!-- STRATEGY ROOM -->
     <div class="room" style="left:1290px;top:282px;width:210px;height:280px;background:rgba(7,14,22,.97);border-color:#162538">
@@ -923,7 +1016,7 @@ function createAgentAvatars() {
     el.id = `avatar-${id}`;
     el.innerHTML = `
       <div class="agent-task-bubble" id="bubble-${id}">
-        <div class="bubble-name" id="bn-${id}" style="color:${meta.color}">${meta.avatar} ${meta.name}</div>
+        <div class="bubble-name" id="bn-${id}" style="color:${meta.color}">${meta.name}</div>
         <div class="bubble-title">${meta.title}</div>
         <div class="bubble-task" id="bt-${id}">Loading...</div>
         <div class="bubble-progress-wrap"><div class="bubble-progress-fill" id="bp-${id}" style="background:${meta.color}"></div></div>
@@ -931,9 +1024,9 @@ function createAgentAvatars() {
         <div class="bubble-location" id="bloc-${id}"></div>
       </div>
       <div class="agent-shadow"></div>
-      <div class="agent-emoji-wrap" id="emoji-${id}" style="border-color:${meta.color};background:${meta.color}18">
+      <div class="agent-emoji-wrap" id="emoji-${id}" style="border-color:transparent;background:transparent;box-shadow:none;width:42px;height:42px">
         <div class="agent-pulse" id="pulse-${id}" style="border-color:${meta.color}"></div>
-        <span style="font-size:18px">${meta.avatar}</span>
+        ${portraitHTML(meta, 38)}
       </div>
       <div class="agent-name-tag" id="nametag-${id}" style="color:${meta.color};border-color:${meta.color}30">
         ${meta.name}
@@ -1013,6 +1106,8 @@ function moveAgents(animate = true) {
 
     if (emojiWrap) {
       emojiWrap.className = `agent-emoji-wrap ${isIdle ? 'idle' : ''}`;
+      const portrait = emojiWrap.querySelector('.agent-portrait');
+      if (portrait) portrait.classList.toggle('idle', isIdle);
     }
     if (pulseEl) {
       pulseEl.style.display = isActive ? 'block' : 'none';
@@ -1075,7 +1170,7 @@ function handleAgentTap(id) {
     const isActive = a.status === 'active';
     document.getElementById('modal-content').innerHTML = `
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.06)">
-        <div style="width:46px;height:46px;border-radius:12px;background:${a.color}20;border:1px solid ${a.color}40;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">${a.avatar}</div>
+        <div style="width:54px;height:54px;border-radius:14px;background:${a.color}14;border:1px solid ${a.color}40;display:flex;align-items:center;justify-content:center;flex-shrink:0">${portraitHTML(a, 44)}</div>
         <div>
           <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:${a.color}">${a.name}</div>
           <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px">${a.title}</div>
@@ -1116,11 +1211,11 @@ function buildActivity() {
     'Activity Log — ' + new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
   const list = document.getElementById('feed-list');
   list.innerHTML = '';
-  [...ACTIVITY_LOG].reverse().forEach((item, i) => {
+  [...activityLog].reverse().forEach((item, i) => {
     const a = agentData[item.agent]; if (!a) return;
     const tc = TYPE_COLORS[item.type] || '#888';
     list.innerHTML += `<div class="feed-item" style="border-left-color:${tc};animation:fadeUp .2s ease ${i*0.02}s both">
-      <div style="flex-shrink:0;font-size:20px;padding-top:1px">${a.avatar}</div>
+      <div style="flex-shrink:0;padding-top:1px">${portraitHTML(a, 30)}</div>
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
           <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,.85);font-family:'IBM Plex Mono',monospace">${a.name}</span>
@@ -1147,7 +1242,7 @@ function buildBoard() {
     agents.forEach(([id,a]) => {
       html += `<div class="task-card" style="border-top-color:${a.color}" onclick="handleAgentTap('${id}')">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:${a.status==='active'?'6px':'0'}">
-          <span style="font-size:14px">${a.avatar}</span>
+          <span style="display:flex">${portraitHTML(a, 26)}</span>
           <span style="font-size:11px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:rgba(255,255,255,.85)">${a.name}</span>
           ${a.status==='active'?`<span style="margin-left:auto;font-size:9px;color:${a.color};font-family:'IBM Plex Mono',monospace">${a.progress}%</span>`:''}
         </div>
@@ -1205,6 +1300,13 @@ function startTimer() {
   }, 1000);
 }
 
+function startMotion() {
+  clearInterval(motionTimer);
+  motionTimer = setInterval(() => {
+    if (currentTab === 'office') moveAgents(true);
+  }, 3500);
+}
+
 // ═══════════════════════════════════════════
 // CLOCK
 // ═══════════════════════════════════════════
@@ -1235,6 +1337,7 @@ async function init() {
   document.getElementById('loading').classList.add('hidden');
   setTimeout(() => document.getElementById('loading').remove(), 500);
   startTimer();
+  startMotion();
 }
 
 init();
