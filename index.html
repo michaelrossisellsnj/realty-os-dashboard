@@ -307,6 +307,39 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:rgba(255,255,25
   color:rgba(255,255,255,.55);
   cursor:pointer;
 }
+.voice-tools{
+  display:flex;
+  gap:6px;
+  margin-left:auto;
+}
+.voice-btn{
+  width:30px;
+  height:30px;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.04);
+  color:rgba(255,255,255,.58);
+  cursor:pointer;
+  font-size:13px;
+}
+.voice-btn.active{
+  border-color:rgba(52,211,153,.48);
+  background:rgba(52,211,153,.14);
+  color:#6ee7b7;
+}
+.voice-btn.listening{
+  border-color:rgba(248,113,113,.55);
+  background:rgba(248,113,113,.16);
+  color:#fca5a5;
+  animation:pulse 1s infinite;
+}
+.voice-status{
+  padding:7px 14px 0;
+  min-height:18px;
+  font-size:9px;
+  color:rgba(255,255,255,.35);
+  font-family:'IBM Plex Mono',monospace;
+}
 .chat-context{
   padding:10px 14px;
   border-bottom:1px solid rgba(255,255,255,.06);
@@ -509,9 +542,14 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:rgba(255,255,25
       <div class="chat-role" id="chat-role">Role</div>
       <div class="chat-state" id="chat-state">Internal chat only</div>
     </div>
+    <div class="voice-tools">
+      <button class="voice-btn" id="voice-mic" type="button" onclick="toggleVoiceListening()" title="Speak to this agent" aria-label="Speak to this agent">🎙</button>
+      <button class="voice-btn" id="voice-speaker" type="button" onclick="toggleVoiceReplies()" title="Toggle spoken replies" aria-label="Toggle spoken replies">🔊</button>
+    </div>
     <button class="chat-close" type="button" onclick="closeAgentChat()" aria-label="Close agent chat">×</button>
   </div>
   <div class="chat-context" id="chat-context"></div>
+  <div class="voice-status" id="voice-status"></div>
   <div class="chat-messages" id="chat-messages"></div>
   <div class="chat-chips">
     <button class="chat-chip" type="button" onclick="sendQuickChat('What are you working on?')">Current work</button>
@@ -710,6 +748,9 @@ let motionTimer = null;
 let refreshCountdown = 30;
 let selectedChatAgentId = null;
 let chatHistories = {};
+let voiceReplyEnabled = true;
+let speechRecognition = null;
+let isListening = false;
 
 function portraitHTML(a, size = 38) {
   if (a.photo) {
@@ -1352,6 +1393,21 @@ function saveChatHistories() {
   } catch(e) {}
 }
 
+function loadVoicePreference() {
+  try {
+    const raw = localStorage.getItem('realty-os-voice-replies-v1');
+    voiceReplyEnabled = raw === null ? true : raw === 'true';
+  } catch(e) {
+    voiceReplyEnabled = true;
+  }
+}
+
+function saveVoicePreference() {
+  try {
+    localStorage.setItem('realty-os-voice-replies-v1', String(voiceReplyEnabled));
+  } catch(e) {}
+}
+
 function openAgentChat(id) {
   const a = agentData[id] || AGENT_META[id];
   if (!a) return;
@@ -1365,6 +1421,7 @@ function openAgentChat(id) {
   document.getElementById('chat-state').textContent = `${isActive ? 'Active' : 'In break room'} · Internal chat only`;
   document.getElementById('chat-state').style.color = isActive ? '#34d399' : 'rgba(255,255,255,.35)';
   document.getElementById('chat-context').innerHTML = `<strong>Current focus:</strong> ${escapeHTML(a.task || 'No active task')}<br><strong>Approval gate:</strong> no outbound messages, pricing, CMA conclusions, CRM edits, or client instructions are sent from this panel.`;
+  updateVoiceControls('');
 
   if (!chatHistories[id] || !chatHistories[id].length) {
     chatHistories[id] = [{
@@ -1381,6 +1438,8 @@ function openAgentChat(id) {
 function closeAgentChat() {
   document.getElementById('agent-chat').classList.remove('open');
   selectedChatAgentId = null;
+  stopVoiceListening();
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 }
 
 function renderAgentChat() {
@@ -1408,7 +1467,7 @@ function sendQuickChat(text) {
   sendAgentChat();
 }
 
-function sendAgentChat() {
+function sendAgentChat(options = {}) {
   if (!selectedChatAgentId) return;
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
@@ -1416,8 +1475,130 @@ function sendAgentChat() {
   const a = agentData[selectedChatAgentId] || AGENT_META[selectedChatAgentId];
   addChatMessage(selectedChatAgentId, 'user', text);
   input.value = '';
-  addChatMessage(selectedChatAgentId, 'agent', generateAgentReply(a, text));
+  const reply = generateAgentReply(a, text);
+  addChatMessage(selectedChatAgentId, 'agent', reply);
   renderAgentChat();
+  if (voiceReplyEnabled || options.spoken) speakAgentReply(a, reply);
+}
+
+function toggleVoiceReplies() {
+  voiceReplyEnabled = !voiceReplyEnabled;
+  saveVoicePreference();
+  updateVoiceControls(voiceReplyEnabled ? 'Spoken replies on.' : 'Spoken replies muted.');
+}
+
+function getRecognitionCtor() {
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
+function toggleVoiceListening() {
+  if (isListening) {
+    stopVoiceListening();
+    return;
+  }
+  if (!selectedChatAgentId) return;
+  const Recognition = getRecognitionCtor();
+  if (!Recognition) {
+    updateVoiceControls('Voice input is not available in this browser. Try Chrome if Safari blocks it.');
+    return;
+  }
+  speechRecognition = new Recognition();
+  speechRecognition.lang = 'en-US';
+  speechRecognition.continuous = false;
+  speechRecognition.interimResults = true;
+  speechRecognition.maxAlternatives = 1;
+  isListening = true;
+  updateVoiceControls('Listening...');
+
+  speechRecognition.onresult = event => {
+    let finalText = '';
+    let interimText = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const transcript = event.results[i][0].transcript.trim();
+      if (event.results[i].isFinal) finalText += transcript;
+      else interimText += transcript;
+    }
+    const input = document.getElementById('chat-input');
+    input.value = finalText || interimText;
+    if (finalText) {
+      updateVoiceControls('Heard: ' + finalText);
+      sendAgentChat({spoken:true});
+    }
+  };
+  speechRecognition.onerror = event => {
+    isListening = false;
+    updateVoiceControls(`Voice input stopped: ${event.error || 'unknown error'}`);
+  };
+  speechRecognition.onend = () => {
+    isListening = false;
+    updateVoiceControls('');
+  };
+  speechRecognition.start();
+}
+
+function stopVoiceListening() {
+  if (speechRecognition && isListening) speechRecognition.stop();
+  isListening = false;
+  updateVoiceControls('');
+}
+
+function updateVoiceControls(statusText) {
+  const mic = document.getElementById('voice-mic');
+  const speaker = document.getElementById('voice-speaker');
+  const status = document.getElementById('voice-status');
+  if (mic) mic.classList.toggle('listening', isListening);
+  if (speaker) speaker.classList.toggle('active', voiceReplyEnabled);
+  if (status) {
+    const voiceSupport = getRecognitionCtor() ? 'Press mic to speak.' : 'Voice input may require Chrome.';
+    status.textContent = statusText || `${voiceReplyEnabled ? 'Spoken replies on' : 'Spoken replies muted'} · ${voiceSupport}`;
+  }
+}
+
+function speakAgentReply(a, text) {
+  if (!('speechSynthesis' in window)) {
+    updateVoiceControls('Spoken replies are not available in this browser.');
+    return;
+  }
+  const cleanText = String(text || '')
+    .replace(/https?:\/\/\S+/g, 'link')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!cleanText) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(cleanText);
+  utterance.lang = 'en-US';
+  utterance.rate = 0.96;
+  utterance.pitch = voicePitchForAgent(a);
+  const voice = chooseVoiceForAgent(a);
+  if (voice) utterance.voice = voice;
+  window.speechSynthesis.speak(utterance);
+}
+
+function chooseVoiceForAgent(a) {
+  const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
+  if (!voices.length) return null;
+  const preferredNames = {
+    Alex:['Samantha','Ava','Zoe','Allison','Susan'],
+    Sophia:['Samantha','Ava','Allison'],
+    Diana:['Ava','Samantha','Susan'],
+    Rachel:['Allison','Samantha','Ava'],
+    Victoria:['Samantha','Ava','Allison'],
+    Olivia:['Allison','Samantha','Ava'],
+    Priya:['Ava','Samantha','Allison'],
+    Catherine:['Samantha','Ava','Susan'],
+    Elena:['Ava','Samantha','Allison'],
+    Amara:['Ava','Samantha','Allison'],
+    Casey:['Samantha','Ava','Alex'],
+  };
+  const names = preferredNames[a.name] || ['Alex','Daniel','Fred','Tom','Samantha'];
+  return names.map(name => voices.find(v => v.name.includes(name))).find(Boolean)
+    || voices.find(v => v.lang && v.lang.startsWith('en'))
+    || voices[0];
+}
+
+function voicePitchForAgent(a) {
+  const higher = ['Alex','Sophia','Diana','Rachel','Victoria','Olivia','Priya','Catherine','Elena','Amara','Casey'];
+  return higher.includes(a.name) ? 1.08 : 0.92;
 }
 
 function generateAgentReply(a, text) {
@@ -1430,6 +1611,10 @@ function generateAgentReply(a, text) {
   const task = a.task || 'No active task';
   const thread = a.thread || 'Unassigned thread';
   const approval = "I can draft or recommend it here, but I will keep it approval-gated. Nothing gets sent, posted, priced, or changed in CRM until Michael approves.";
+
+  if (/(execute|do it|run it|take action|start that|make it happen)/.test(lower)) {
+    return `I can prepare the next internal step from the dashboard, but this voice layer is not yet connected to Hermes execution. ${approval}\n\nNext build step: connect this command to a Hermes action queue so I can create an approve/edit/skip item instead of only replying.`;
+  }
 
   if (/(send|email|text|dm|call|post|publish|invite|calendar|crm|change status|update command|approve|approval)/.test(lower)) {
     return `${approval}\n\nBest next safe move: I will prepare the suggested action, the reason, and any risk notes so you can approve, edit, or skip it.`;
@@ -1644,6 +1829,10 @@ setInterval(updateClock, 1000);
 async function init() {
   document.getElementById('loading-status').textContent = 'Loading agent data...';
   loadChatHistories();
+  loadVoicePreference();
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.onvoiceschanged = () => updateVoiceControls('');
+  }
   await fetchData();
   document.getElementById('loading-status').textContent = 'Building your office...';
   buildFloor();
