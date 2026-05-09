@@ -572,6 +572,8 @@ const CONFIG = {
   SHEET_ID: "1sJUtl5jSJrIhuhYy19tVapmIQscpQV44r0gFZ-7-nYc",
   STATUS_TAB: "Sheet1",
   LOCAL_STATUS_URL: "reality_os_dashboard_status.json",
+  PREMIUM_VOICE_URL: "http://127.0.0.1:8787/tts",
+  PREMIUM_VOICE_ENABLED: true,
   REFRESH_INTERVAL: 10000,
   LIVE_MODE: true,
 };
@@ -1554,7 +1556,11 @@ function updateVoiceControls(statusText) {
   }
 }
 
-function speakAgentReply(a, text) {
+async function speakAgentReply(a, text) {
+  if (CONFIG.PREMIUM_VOICE_ENABLED) {
+    const premiumPlayed = await speakPremiumAgentReply(a, text);
+    if (premiumPlayed) return;
+  }
   if (!('speechSynthesis' in window)) {
     updateVoiceControls('Spoken replies are not available in this browser.');
     return;
@@ -1572,6 +1578,50 @@ function speakAgentReply(a, text) {
   const voice = chooseVoiceForAgent(a);
   if (voice) utterance.voice = voice;
   window.speechSynthesis.speak(utterance);
+}
+
+async function speakPremiumAgentReply(a, text) {
+  const cleanText = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!cleanText) return false;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3500);
+  try {
+    updateVoiceControls(`Requesting ${a.name}'s premium voice...`);
+    const res = await fetch(CONFIG.PREMIUM_VOICE_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({agent_id:findAgentIdByName(a.name), agent_name:a.name, text:cleanText}),
+      signal:controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      updateVoiceControls(detail ? `Premium voice unavailable: ${detail.slice(0, 90)}` : 'Premium voice unavailable; using browser voice.');
+      return false;
+    }
+    const blob = await res.blob();
+    if (!blob || !blob.size) return false;
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.onended = () => URL.revokeObjectURL(url);
+    audio.onerror = () => {
+      URL.revokeObjectURL(url);
+      updateVoiceControls('Premium audio playback failed; using browser voice next time.');
+    };
+    await audio.play();
+    updateVoiceControls(`${a.name} is speaking with premium voice.`);
+    return true;
+  } catch(e) {
+    clearTimeout(timeout);
+    updateVoiceControls('Premium voice proxy not running; using browser voice.');
+    return false;
+  }
+}
+
+function findAgentIdByName(name) {
+  const match = Object.entries(AGENT_META).find(([,meta]) => meta.name === name);
+  return match ? match[0] : '';
 }
 
 function chooseVoiceForAgent(a) {
