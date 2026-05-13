@@ -3,25 +3,25 @@
     {
       "action": "GSMLS roster project room opened; active roster agents moved into Conf B together",
       "agent": "op-2",
-      "time": "7:50 PM",
+      "time": "8:00 PM",
       "type": "systems"
     },
     {
       "action": "Weekly listing appointment pace: 0/3 appointments, 0/1-2 listings",
       "agent": "cos-0",
-      "time": "7:50 PM",
+      "time": "8:00 PM",
       "type": "brief"
     },
     {
       "action": "Seller pipeline: 3 evidence record(s), 4 source-review triage item(s)",
       "agent": "cos-1",
-      "time": "7:50 PM",
+      "time": "8:00 PM",
       "type": "lead"
     },
     {
       "action": "GSMLS login ready; primary-source roster pull is now the active conference-room workstream",
       "agent": "bs-3",
-      "time": "7:50 PM",
+      "time": "8:00 PM",
       "type": "cma"
     }
   ],
@@ -188,7 +188,7 @@
       "thread": ""
     }
   },
-  "generated_at": "2026-05-12T19:50:26-04:00",
+  "generated_at": "2026-05-12T20:00:31-04:00",
   "metrics": {
     "appointments_this_week": 0,
     "listings_this_week": 0,
