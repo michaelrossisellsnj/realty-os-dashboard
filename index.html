@@ -340,6 +340,26 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:rgba(255,255,25
   color:rgba(255,255,255,.35);
   font-family:'IBM Plex Mono',monospace;
 }
+.chat-sync-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:7px 14px 0;
+  font-size:9px;
+  color:rgba(255,255,255,.34);
+  font-family:'IBM Plex Mono',monospace;
+}
+.chat-sync-status{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chat-sync-btn{
+  border:1px solid rgba(255,255,255,.11);
+  background:rgba(255,255,255,.04);
+  color:rgba(255,255,255,.58);
+  border-radius:7px;
+  padding:4px 7px;
+  font-size:9px;
+  font-family:'IBM Plex Mono',monospace;
+  cursor:pointer;
+}
 .chat-context{
   padding:10px 14px;
   border-bottom:1px solid rgba(255,255,255,.06);
@@ -550,6 +570,11 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:rgba(255,255,25
   </div>
   <div class="chat-context" id="chat-context"></div>
   <div class="voice-status" id="voice-status"></div>
+  <div class="chat-sync-row">
+    <span class="chat-sync-status" id="chat-sync-status">Sync: local device</span>
+    <button class="chat-sync-btn" id="chat-sync-signin" type="button" onclick="signInForChatSync()">Sign in</button>
+    <button class="chat-sync-btn" id="chat-sync-signout" type="button" onclick="signOutChatSync()" style="display:none">Sign out</button>
+  </div>
   <div class="chat-messages" id="chat-messages"></div>
   <div class="chat-chips">
     <button class="chat-chip" type="button" onclick="sendQuickChat('What are you working on?')">Current work</button>
@@ -576,6 +601,15 @@ const CONFIG = {
   PREMIUM_VOICE_ENABLED: true,
   REFRESH_INTERVAL: 10000,
   LIVE_MODE: true,
+  REALTY_OS_SESSION_ID: "dashboard-michael",
+  FIREBASE_CONFIG: {
+    apiKey: "AIzaSyDzXCuCQEu7gdQRcN4jawza8LLRm5pqKss",
+    authDomain: "database-boot-camp.firebaseapp.com",
+    projectId: "database-boot-camp",
+    storageBucket: "database-boot-camp.firebasestorage.app",
+    messagingSenderId: "253497913008",
+    appId: "1:253497913008:web:3e861d5afe7a81b57a1575"
+  },
 };
 
 // ═══════════════════════════════════════════
@@ -753,6 +787,16 @@ let chatHistories = {};
 let voiceReplyEnabled = true;
 let speechRecognition = null;
 let isListening = false;
+let chatSync = {
+  app:null,
+  auth:null,
+  db:null,
+  api:null,
+  user:null,
+  ready:false,
+  unsubscribe:null,
+  activeAgentId:null,
+};
 
 function portraitHTML(a, size = 38) {
   if (a.photo) {
@@ -1395,6 +1439,163 @@ function saveChatHistories() {
   } catch(e) {}
 }
 
+function createChatMessage(who, text) {
+  return {
+    id:`${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    who,
+    text,
+    createdAt:Date.now()
+  };
+}
+
+async function initChatSync() {
+  try {
+    const [appMod, authMod, firestoreMod] = await Promise.all([
+      import('https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js'),
+      import('https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js'),
+      import('https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js')
+    ]);
+    const app = appMod.getApps().length ? appMod.getApps()[0] : appMod.initializeApp(CONFIG.FIREBASE_CONFIG);
+    const auth = authMod.getAuth(app);
+    const db = firestoreMod.getFirestore(app);
+    chatSync = {
+      ...chatSync,
+      app,
+      auth,
+      db,
+      api:{...authMod, ...firestoreMod},
+      ready:true
+    };
+    authMod.onAuthStateChanged(auth, user => {
+      chatSync.user = user || null;
+      updateChatSyncStatus();
+      if (selectedChatAgentId) subscribeChatSyncAgent(selectedChatAgentId);
+    });
+    updateChatSyncStatus();
+  } catch(e) {
+    chatSync.ready = false;
+    updateChatSyncStatus('Sync unavailable');
+  }
+}
+
+function updateChatSyncStatus(overrideText = '') {
+  const status = document.getElementById('chat-sync-status');
+  const signIn = document.getElementById('chat-sync-signin');
+  const signOut = document.getElementById('chat-sync-signout');
+  if (!status) return;
+  if (overrideText) {
+    status.textContent = overrideText;
+  } else if (!chatSync.ready) {
+    status.textContent = 'Sync: local device';
+  } else if (!chatSync.user) {
+    status.textContent = 'Sync: sign in for laptop/iPhone history';
+  } else {
+    status.textContent = `Sync: live as ${chatSync.user.email || 'owner'}`;
+  }
+  if (signIn) signIn.style.display = chatSync.user ? 'none' : '';
+  if (signOut) signOut.style.display = chatSync.user ? '' : 'none';
+}
+
+async function signInForChatSync() {
+  if (!chatSync.ready || !chatSync.auth || !chatSync.api) {
+    updateChatSyncStatus('Sync is still loading. Try again in a moment.');
+    return;
+  }
+  const savedEmail = localStorage.getItem('realty-os-sync-email') || 'michaelrossisellsnj@gmail.com';
+  const email = window.prompt('REALTY OS sync email', savedEmail);
+  if (!email) return;
+  const password = window.prompt('REALTY OS sync password');
+  if (!password) return;
+  try {
+    await chatSync.api.signInWithEmailAndPassword(chatSync.auth, email.trim(), password);
+    localStorage.setItem('realty-os-sync-email', email.trim());
+    updateChatSyncStatus('Sync connected.');
+  } catch(e) {
+    updateChatSyncStatus(`Sync sign-in failed: ${e.code || e.message || 'check credentials'}`);
+  }
+}
+
+async function signOutChatSync() {
+  if (chatSync.unsubscribe) chatSync.unsubscribe();
+  chatSync.unsubscribe = null;
+  chatSync.activeAgentId = null;
+  if (chatSync.auth && chatSync.api) await chatSync.api.signOut(chatSync.auth);
+  updateChatSyncStatus('Sync signed out.');
+}
+
+function getChatSyncMessagesRef(agentId) {
+  const api = chatSync.api;
+  return api.collection(
+    chatSync.db,
+    'realtyOsConversations',
+    CONFIG.REALTY_OS_SESSION_ID,
+    'agents',
+    agentId,
+    'messages'
+  );
+}
+
+function subscribeChatSyncAgent(agentId) {
+  if (chatSync.unsubscribe && chatSync.activeAgentId !== agentId) {
+    chatSync.unsubscribe();
+    chatSync.unsubscribe = null;
+  }
+  chatSync.activeAgentId = agentId;
+  if (!chatSync.ready || !chatSync.user || !chatSync.db || !chatSync.api || chatSync.unsubscribe) {
+    updateChatSyncStatus();
+    return;
+  }
+  const api = chatSync.api;
+  const q = api.query(getChatSyncMessagesRef(agentId), api.orderBy('createdAt', 'asc'), api.limit(80));
+  chatSync.unsubscribe = api.onSnapshot(q, snapshot => {
+    const remoteMessages = snapshot.docs
+      .map(docSnap => {
+        const data = docSnap.data() || {};
+        return {
+          id:data.id || docSnap.id,
+          who:data.who === 'user' ? 'user' : 'agent',
+          text:String(data.text || ''),
+          createdAt:Number(data.clientCreatedAt || 0)
+        };
+      })
+      .filter(msg => msg.text);
+    if (remoteMessages.length) {
+      chatHistories[agentId] = remoteMessages.slice(-36);
+      saveChatHistories();
+      if (selectedChatAgentId === agentId) renderAgentChat();
+    }
+    updateChatSyncStatus();
+  }, error => {
+    updateChatSyncStatus(`Sync blocked: ${error.code || 'rules/connection'}`);
+  });
+}
+
+async function writeChatSyncMessage(agentId, message) {
+  if (!chatSync.ready || !chatSync.user || !chatSync.db || !chatSync.api || !message) return;
+  try {
+    const api = chatSync.api;
+    const messageId = message.id || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    await api.setDoc(
+      api.doc(getChatSyncMessagesRef(agentId), messageId),
+      {
+        id:messageId,
+        agentId,
+        sessionId:CONFIG.REALTY_OS_SESSION_ID,
+        who:message.who === 'user' ? 'user' : 'agent',
+        text:String(message.text || ''),
+        createdAt:api.serverTimestamp(),
+        clientCreatedAt:message.createdAt || Date.now(),
+        userId:chatSync.user.uid,
+        userEmail:chatSync.user.email || '',
+        source:'realty-os-dashboard'
+      },
+      {merge:true}
+    );
+  } catch(e) {
+    updateChatSyncStatus(`Sync write failed: ${e.code || 'connection'}`);
+  }
+}
+
 function loadVoicePreference() {
   try {
     const raw = localStorage.getItem('realty-os-voice-replies-v1');
@@ -1426,20 +1627,28 @@ function openAgentChat(id) {
   updateVoiceControls('');
 
   if (!chatHistories[id] || !chatHistories[id].length) {
-    chatHistories[id] = [{
-      who:'agent',
-      text:`Hi Michael. I'm ${a.name}, your ${a.title}. I can brief you on my current work, explain what I need, draft internal/client-facing language for approval, and suggest next moves. I will not send anything or make pricing/client commitments from this chat.`
-    }];
+    chatHistories[id] = [
+      createChatMessage(
+        'agent',
+        `Hi Michael. I'm ${a.name}, your ${a.title}. I can brief you on my current work, explain what I need, draft internal/client-facing language for approval, and suggest next moves. I will not send anything or make pricing/client commitments from this chat.`
+      )
+    ];
     saveChatHistories();
   }
   chat.classList.add('open');
   renderAgentChat();
+  subscribeChatSyncAgent(id);
   setTimeout(() => document.getElementById('chat-input').focus(), 40);
 }
 
 function closeAgentChat() {
   document.getElementById('agent-chat').classList.remove('open');
   selectedChatAgentId = null;
+  if (chatSync.unsubscribe) {
+    chatSync.unsubscribe();
+    chatSync.unsubscribe = null;
+    chatSync.activeAgentId = null;
+  }
   stopVoiceListening();
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 }
@@ -1455,9 +1664,12 @@ function renderAgentChat() {
 
 function addChatMessage(agentId, who, text) {
   if (!chatHistories[agentId]) chatHistories[agentId] = [];
-  chatHistories[agentId].push({who, text});
+  const message = createChatMessage(who, text);
+  chatHistories[agentId].push(message);
   chatHistories[agentId] = chatHistories[agentId].slice(-36);
   saveChatHistories();
+  writeChatSyncMessage(agentId, message);
+  return message;
 }
 
 function handleChatKey(e) {
@@ -1469,18 +1681,50 @@ function sendQuickChat(text) {
   sendAgentChat();
 }
 
-function sendAgentChat(options = {}) {
+async function sendAgentChat(options = {}) {
   if (!selectedChatAgentId) return;
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
   if (!text) return;
-  const a = agentData[selectedChatAgentId] || AGENT_META[selectedChatAgentId];
-  addChatMessage(selectedChatAgentId, 'user', text);
+  const agentId = selectedChatAgentId;
+  const a = agentData[agentId] || AGENT_META[agentId];
+  addChatMessage(agentId, 'user', text);
   input.value = '';
-  const reply = generateAgentReply(a, text);
-  addChatMessage(selectedChatAgentId, 'agent', reply);
   renderAgentChat();
-  if (voiceReplyEnabled || options.spoken) speakAgentReply(a, reply);
+
+  try {
+    updateVoiceControls(`${a.name} is thinking...`);
+    const res = await fetch('http://localhost:8791/api/agents/chat', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        agent_id:agentId,
+        session_id:'dashboard-michael',
+        message:text,
+        status:{
+          status:a.status,
+          task:a.task,
+          progress:a.progress,
+          thread:a.thread,
+          location:a.location
+        }
+      })
+    });
+    const result = await res.json();
+    if (!res.ok || !result.ok || !result.reply) {
+      throw new Error(result.error || `Agent runtime returned ${res.status}`);
+    }
+    addChatMessage(agentId, 'agent', result.reply);
+    renderAgentChat();
+    updateVoiceControls(result.mode && result.mode !== 'llm' ? `Live runtime fallback: ${result.mode}` : 'Live agent runtime connected.');
+    if (voiceReplyEnabled || options.spoken) speakAgentReply(a, result.reply);
+  } catch(e) {
+    const reply = generateAgentReply(a, text);
+    addChatMessage(agentId, 'agent', `${reply}\n\n[Live agent runtime offline: start alex-operator-starter on localhost:8791 to enable real agent reasoning.]`);
+    renderAgentChat();
+    updateVoiceControls('Live agent runtime offline; using dashboard fallback.');
+    if (voiceReplyEnabled || options.spoken) speakAgentReply(a, reply);
+  }
 }
 
 function toggleVoiceReplies() {
@@ -1880,6 +2124,7 @@ async function init() {
   document.getElementById('loading-status').textContent = 'Loading agent data...';
   loadChatHistories();
   loadVoicePreference();
+  initChatSync();
   if ('speechSynthesis' in window) {
     window.speechSynthesis.onvoiceschanged = () => updateVoiceControls('');
   }
