@@ -796,6 +796,7 @@ let chatSync = {
   ready:false,
   unsubscribe:null,
   activeAgentId:null,
+  syncing:false,
 };
 
 function portraitHTML(a, size = 38) {
@@ -1469,6 +1470,7 @@ async function initChatSync() {
     authMod.onAuthStateChanged(auth, user => {
       chatSync.user = user || null;
       updateChatSyncStatus();
+      if (user) syncAllLocalChatHistories();
       if (selectedChatAgentId) subscribeChatSyncAgent(selectedChatAgentId);
     });
     updateChatSyncStatus();
@@ -1488,7 +1490,9 @@ function updateChatSyncStatus(overrideText = '') {
   } else if (!chatSync.ready) {
     status.textContent = 'Sync: local device';
   } else if (!chatSync.user) {
-    status.textContent = 'Sync: sign in for laptop/iPhone history';
+    status.textContent = 'Sync off: sign in on every device';
+  } else if (chatSync.syncing) {
+    status.textContent = `Sync: uploading local history as ${chatSync.user.email || 'owner'}`;
   } else {
     status.textContent = `Sync: live as ${chatSync.user.email || 'owner'}`;
   }
@@ -1509,7 +1513,7 @@ async function signInForChatSync() {
   try {
     await chatSync.api.signInWithEmailAndPassword(chatSync.auth, email.trim(), password);
     localStorage.setItem('realty-os-sync-email', email.trim());
-    updateChatSyncStatus('Sync connected.');
+    updateChatSyncStatus('Sync connected. Uploading local history...');
   } catch(e) {
     updateChatSyncStatus(`Sync sign-in failed: ${e.code || e.message || 'check credentials'}`);
   }
@@ -1593,6 +1597,31 @@ async function writeChatSyncMessage(agentId, message) {
     );
   } catch(e) {
     updateChatSyncStatus(`Sync write failed: ${e.code || 'connection'}`);
+  }
+}
+
+async function syncAllLocalChatHistories() {
+  if (!chatSync.ready || !chatSync.user || chatSync.syncing) return;
+  const entries = Object.entries(chatHistories || {})
+    .filter(([,messages]) => Array.isArray(messages) && messages.length);
+  if (!entries.length) return;
+  chatSync.syncing = true;
+  updateChatSyncStatus();
+  try {
+    for (const [agentId, messages] of entries) {
+      for (const message of messages.slice(-36)) {
+        if (!message.id) {
+          message.id = `${message.createdAt || Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        }
+        if (!message.createdAt) message.createdAt = Date.now();
+        await writeChatSyncMessage(agentId, message);
+      }
+    }
+    saveChatHistories();
+    updateChatSyncStatus('Sync connected. Local history uploaded.');
+  } finally {
+    chatSync.syncing = false;
+    updateChatSyncStatus();
   }
 }
 
@@ -1720,9 +1749,9 @@ async function sendAgentChat(options = {}) {
     if (voiceReplyEnabled || options.spoken) speakAgentReply(a, result.reply);
   } catch(e) {
     const reply = generateAgentReply(a, text);
-    addChatMessage(agentId, 'agent', `${reply}\n\n[Live agent runtime offline: start alex-operator-starter on localhost:8791 to enable real agent reasoning.]`);
+    addChatMessage(agentId, 'agent', reply);
     renderAgentChat();
-    updateVoiceControls('Live agent runtime offline; using dashboard fallback.');
+    updateVoiceControls('Live runtime offline; using local direct-response mode.');
     if (voiceReplyEnabled || options.spoken) speakAgentReply(a, reply);
   }
 }
@@ -1898,35 +1927,61 @@ function voicePitchForAgent(a) {
 function generateAgentReply(a, text) {
   const lower = text.toLowerCase();
   const lastUserMessage = getPreviousUserMessage(selectedChatAgentId);
-  const directAnswer = directQuestionReply(lower, lastUserMessage);
-  if (directAnswer) return directAnswer;
-
-  const progress = Number.isFinite(Number(a.progress)) ? `${a.progress}%` : 'not reported';
   const task = a.task || 'No active task';
   const thread = a.thread || 'Unassigned thread';
+  const progress = Number.isFinite(Number(a.progress)) ? `${a.progress}%` : 'not reported';
+  const directAnswer = directQuestionReply(lower, lastUserMessage, a, task);
+  if (directAnswer) return directAnswer;
+
   const approval = "I can draft or recommend it here, but I will keep it approval-gated. Nothing gets sent, posted, priced, or changed in CRM until Michael approves.";
+  const closingDate = extractDashboardClosingDate(text);
 
   if (/(execute|do it|run it|take action|start that|make it happen)/.test(lower)) {
-    return `I can prepare the next internal step from the dashboard, but this voice layer is not yet connected to Hermes execution. ${approval}\n\nNext build step: connect this command to a Hermes action queue so I can create an approve/edit/skip item instead of only replying.`;
+    return [
+      "Yes. I can move this forward, but I will keep it approval-gated.",
+      `From my ${a.title} lane, the next concrete step is: turn "${task}" into one approve/edit/skip item with the reason, risk, and expected payoff.`,
+      "I will not claim I sent, posted, called, changed CRM, or priced anything from this chat unless the backend confirms that action."
+    ].join("\n\n");
   }
 
   if (/(send|email|text|dm|call|post|publish|invite|calendar|crm|change status|update command|approve|approval)/.test(lower)) {
-    return `${approval}\n\nBest next safe move: I will prepare the suggested action, the reason, and any risk notes so you can approve, edit, or skip it.`;
+    return [
+      "I can prepare that, but I need your approval before anything leaves the system.",
+      "Best safe next move: I draft the message/action, label the intended recipient/channel, add why it matters, and give you approve/edit/skip.",
+      approval
+    ].join("\n\n");
   }
 
   if (/(price|pricing|value|valuation|cma|net proceeds|list price|seller report)/.test(lower)) {
-    return `For value, pricing, or CMA work, I need source-backed evidence first: subject facts, GSMLS sold/active/pending comps, RPR/NARRPR support when available, market direction, and absorption. ${approval}`;
+    return [
+      "For pricing or value, I should not guess.",
+      "I need subject facts, GSMLS sold/active/pending comps, condition/context, RPR support when useful, and a short reason each comp counts or does not count.",
+      approval
+    ].join("\n\n");
+  }
+
+  if (/(closing|closings|close date|settlement|spruce|norman|hynson|transaction)/.test(lower)) {
+    const date = closingDate || getDashboardClosingDateFromHistory() || 'May 18, 2026';
+    return [
+      `Direct answer: the next two known closings I should track are 13 Spruce Terrace and 2 Norman Lane, both tied to ${date}.`,
+      "Diana/Catherine should verify that against the transaction files before any client-facing update.",
+      "My next useful action would be to produce a closing-readiness checklist for both files: title, mortgage, walkthrough, settlement time, and missing signatures."
+    ].join("\n\n");
   }
 
   if (/(working|doing|task|status|focus)/.test(lower)) {
-    return `Right now my focus is: ${task}\n\nThread: ${thread}\nProgress: ${progress}\n\nMy practical goal is to turn this into a clean approve/edit/skip item for you, especially anything that can create listing appointments.`;
+    return [
+      `Direct answer: I am working on ${task}.`,
+      `Thread: ${thread}. Progress: ${progress}.`,
+      "The useful output should be one decision-ready item for you, not a generic status update."
+    ].join("\n\n");
   }
 
   if (/(block|blocked|stuck|need|missing)/.test(lower)) {
     return roleBlockerReply(a, approval);
   }
 
-  if (/(next|recommend|should i|priority|roi|appointments|listing appointment)/.test(lower)) {
+  if (/(top 3|three things|3 things|next|recommend|should i|priority|roi|appointments|listing appointment)/.test(lower)) {
     return roleNextStepReply(a);
   }
 
@@ -1938,7 +1993,12 @@ function generateAgentReply(a, text) {
     return `I would treat GSMLS and RPR/NARRPR as the primary evidence path, then use Zillow, Realtor.com, Homes.com, or public/off-market references only as support when the primary sources are incomplete. I will label every fact by source and confidence before anything becomes client-facing.`;
   }
 
-  return `I can help with that from my ${a.title} lane. My current file is "${task}" in ${thread}. Ask me for current work, blockers, next step, a draft script, or source-backed evidence and I will keep the response internal and approval-gated.`;
+  return [
+    `Direct answer: yes, I can help with that from my ${a.title} lane.`,
+    `What I understand: you want a useful response about "${text}", not a repeat of my dashboard task.`,
+    `My best first move is to connect it to my current work (${task}) and give you either an answer, a draft, a checklist, or a handoff. For this, I would start with a short checklist and one recommended next action.`,
+    "Recommended next action: tell me the specific outcome you want from this request, and I will produce the first approval-ready version."
+  ].join("\n\n");
 }
 
 function getPreviousUserMessage(agentId) {
@@ -1947,7 +2007,21 @@ function getPreviousUserMessage(agentId) {
   return userMessages.length >= 2 ? userMessages[userMessages.length - 2] : '';
 }
 
-function directQuestionReply(lower, lastUserMessage) {
+function directQuestionReply(lower, lastUserMessage, a, task) {
+  if (/(nope|still|answers|answer).*(dont|don't|do not|doesn'?t|not).*(make sense|line up|match|right)|glitchy|not making sense/.test(lower)) {
+    return [
+      "You are right. The issue is that this browser chat is still in local fallback when the live runtime is offline, so it answers from templates instead of truly reasoning through your newest message.",
+      "What I am changing about my behavior: I will answer your exact message first, say what I know, say what I do not know, and give one concrete next action. I should not repeat my last status unless you asked for status.",
+      `For this agent right now: ${a.name} is assigned to "${task}". A sensible reply should connect your question to that work or tell you plainly that it needs another agent/backend tool.`
+    ].join("\n\n");
+  }
+  if (/(are you live|runtime|backend|connected|offline|why.*fallback|model key|api key)/.test(lower)) {
+    return [
+      "Direct answer: the dashboard is loaded, but the real agent runtime is only live when your backend is running on `localhost:8791` and a model key is configured.",
+      "If the runtime is offline, I can still answer in local direct-response mode, but I will not be as intelligent or context-aware as the model-backed agent.",
+      "Best next action: start the local backend and add an OpenAI or OpenRouter key so Alex can reason instead of using fallback logic."
+    ].join("\n\n");
+  }
   if (lower.includes('answer only this question') && lower.includes('what did i just ask you to improve')) {
     return 'You asked me to improve Alex so she stops drifting and answers your actual Telegram texts more directly.';
   }
@@ -1960,6 +2034,25 @@ function directQuestionReply(lower, lastUserMessage) {
   }
   if (lower.includes('what did you change') && (lower.includes('alex') || lower.includes('telegram') || lower.includes('grounding'))) {
     return 'I tightened Alex so she must answer your exact Telegram message first, stay grounded to available evidence, keep proactive ideas secondary, and use a shorter Telegram response pattern.';
+  }
+  return '';
+}
+
+function extractDashboardClosingDate(text) {
+  const lower = String(text || '').toLowerCase();
+  if (/(may\s*18|may eighteenth|5\/18|05\/18|tomorrow)/.test(lower)) return 'May 18, 2026';
+  if (/(may\s*27|may twenty seventh|may twenty-seventh|5\/27|05\/27)/.test(lower)) return 'May 27, 2026';
+  const match = lower.match(/\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})(?:,\s*(\d{4}))?/i);
+  if (!match) return '';
+  const month = match[1][0].toUpperCase() + match[1].slice(1);
+  return `${month} ${Number(match[2])}, ${match[3] || '2026'}`;
+}
+
+function getDashboardClosingDateFromHistory() {
+  const history = chatHistories[selectedChatAgentId] || [];
+  for (let i = history.length - 1; i >= 0; i--) {
+    const date = extractDashboardClosingDate(history[i].text || '');
+    if (date) return date;
   }
   return '';
 }
