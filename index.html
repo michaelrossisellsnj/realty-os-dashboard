@@ -689,6 +689,27 @@ const CONF_ASSIGNMENT = {
   "cos-4":"war-room","rec-1":"war-room","rec-2":"war-room",
 };
 
+const REALTY_OS_CONFIG = {
+  agentRuntimeUrl: (window.REALTY_OS_CONFIG && window.REALTY_OS_CONFIG.agentRuntimeUrl) || '',
+  defaultAgentRuntimeUrl: 'http://localhost:8791'
+};
+
+function getAgentRuntimeBaseUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const paramUrl = params.get('agentRuntime');
+  if (paramUrl) {
+    const cleanUrl = paramUrl.trim().replace(/\/+$/, '');
+    localStorage.setItem('realtyOsAgentRuntimeUrl', cleanUrl);
+    return cleanUrl;
+  }
+  const savedUrl = localStorage.getItem('realtyOsAgentRuntimeUrl');
+  return (REALTY_OS_CONFIG.agentRuntimeUrl || savedUrl || REALTY_OS_CONFIG.defaultAgentRuntimeUrl).replace(/\/+$/, '');
+}
+
+function getAgentRuntimeChatUrl() {
+  return `${getAgentRuntimeBaseUrl()}/api/agents/chat`;
+}
+
 // ═══════════════════════════════════════════
 // AGENT META — static info
 // ═══════════════════════════════════════════
@@ -1723,7 +1744,7 @@ async function sendAgentChat(options = {}) {
 
   try {
     updateVoiceControls(`${a.name} is thinking...`);
-    const res = await fetch('http://localhost:8791/api/agents/chat', {
+    const res = await fetch(getAgentRuntimeChatUrl(), {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
@@ -2017,9 +2038,9 @@ function directQuestionReply(lower, lastUserMessage, a, task) {
   }
   if (/(are you live|runtime|backend|connected|offline|why.*fallback|model key|api key)/.test(lower)) {
     return [
-      "Direct answer: the dashboard is loaded, but the real agent runtime is only live when your backend is running on `localhost:8791` and a model key is configured.",
+      `Direct answer: the dashboard is loaded, but the real agent runtime is only live when your backend is reachable at ${getAgentRuntimeBaseUrl()} and a model key is configured.`,
       "If the runtime is offline, I can still answer in local direct-response mode, but I will not be as intelligent or context-aware as the model-backed agent.",
-      "Best next action: start the local backend and add an OpenAI or OpenRouter key so Alex can reason instead of using fallback logic."
+      "Best next action: host the backend at a real URL and add an OpenAI or OpenRouter key so Alex can reason instead of using fallback logic."
     ].join("\n\n");
   }
   if (lower.includes('answer only this question') && lower.includes('what did i just ask you to improve')) {
